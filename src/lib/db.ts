@@ -9,8 +9,8 @@ const globalForPrisma = globalThis as unknown as {
 // On Vercel, the filesystem is read-only except /tmp.
 // Copy the pre-seeded SQLite DB to /tmp so Prisma can use it.
 if (process.env.VERCEL && !fs.existsSync("/tmp/dev.db")) {
-  // DATABASE_URL=file:./dev.db means the DB is at <cwd>/dev.db
-  const source = path.join(process.cwd(), "dev.db");
+  // Prisma resolves file:./dev.db relative to the schema (prisma/)
+  const source = path.join(process.cwd(), "prisma", "dev.db");
   if (fs.existsSync(source)) {
     fs.copyFileSync(source, "/tmp/dev.db");
   }
