@@ -14,9 +14,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.playerCode || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { playerCode: credentials.playerCode as string },
+        // Case-insensitive player code lookup
+        const inputCode = (credentials.playerCode as string).toLowerCase();
+        const allUsers = await prisma.user.findMany({
+          where: { playerCode: { not: "" } },
         });
+        const user = allUsers.find(u => u.playerCode.toLowerCase() === inputCode) ?? null;
 
         if (!user) return null;
 

@@ -9,37 +9,40 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const league = searchParams.get("league") || "NFL";
+  const league = searchParams.get("league"); // null = combined, "NFL" or "NCAAF" for filtered
+  const weekFilter = searchParams.get("week"); // specific weekId or null for all
 
   const season = await prisma.season.findFirst({
     where: { isActive: true },
+    include: { weeks: { orderBy: { number: "asc" } } },
   });
 
   if (!season) {
-    return NextResponse.json({ standings: [] });
+    return NextResponse.json({ standings: [], weeks: [] });
   }
 
-  // Get all users
   const users = await prisma.user.findMany({
     select: { id: true, name: true, playerCode: true },
   });
 
-  // Get all picks with scored games for this season and league
+  // Build filter for picks
+  const gameFilter: Record<string, unknown> = {
+    seasonId: season.id,
+    isFinal: true,
+  };
+  if (league) gameFilter.league = league;
+
   const picks = await prisma.pick.findMany({
     where: {
-      game: {
-        seasonId: season.id,
-        league,
-        isFinal: true,
-      },
+      game: gameFilter,
       points: { not: null },
     },
     include: {
-      game: { select: { weekId: true } },
+      game: { select: { weekId: true, league: true } },
     },
   });
 
-  // Calculate standings per user
+  // Calculate standings per user with weekly breakdown
   const standings = users.map((user) => {
     const userPicks = picks.filter((p) => p.userId === user.id);
 
@@ -47,24 +50,33 @@ export async function GET(req: NextRequest) {
     let losses = 0;
     let ties = 0;
 
-    // Group by week for best/worst week
+    // Group by week for weekly scores
     const weekPoints = new Map<string, number>();
 
     for (const pick of userPicks) {
       const pts = pick.points ?? 0;
 
-      // For W/L/T: a pick is a win if points > 0, loss if points < 0 or 0 for regular (push)
-      if (pts > 0) {
-        wins++;
-      } else if (pts < 0) {
-        losses++;
-      } else {
-        // 0 points = regular pick that was wrong, or push
-        losses++;
-      }
+      if (pts > 0) wins++;
+      else losses++;
 
       const weekId = pick.game.weekId;
       weekPoints.set(weekId, (weekPoints.get(weekId) || 0) + pts);
+    }
+
+    // Build weekly breakdown (cumulative YTD)
+    const weeklyScores: { weekId: string; weekNumber: number; points: number; ytd: number }[] = [];
+    let ytd = 0;
+    for (const week of season.weeks) {
+      const pts = weekPoints.get(week.id) ?? 0;
+      if (weekPoints.has(week.id)) {
+        ytd += pts;
+        weeklyScores.push({
+          weekId: week.id,
+          weekNumber: week.number,
+          points: pts,
+          ytd,
+        });
+      }
     }
 
     const weekScores = Array.from(weekPoints.values());
@@ -86,11 +98,17 @@ export async function GET(req: NextRequest) {
       bestWeek,
       worstWeek,
       gamesPlayed: totalGames,
+      weeklyScores,
     };
   });
 
-  // Sort by total points descending, then by pct
   standings.sort((a, b) => b.totalPoints - a.totalPoints || b.pct - a.pct);
 
-  return NextResponse.json({ standings });
+  // Filter out users with no picks
+  const activeStandings = standings.filter((s) => s.gamesPlayed > 0);
+
+  return NextResponse.json({
+    standings: activeStandings,
+    weeks: season.weeks.map((w) => ({ id: w.id, number: w.number, label: w.label })),
+  });
 }

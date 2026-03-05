@@ -76,6 +76,12 @@ export default function AdminGamesPage() {
       });
   }
 
+  // Convert local datetime-local string to ISO string with proper timezone
+  function localToISO(localDatetime: string) {
+    const d = new Date(localDatetime);
+    return d.toISOString();
+  }
+
   async function handleAddGame(e: React.FormEvent) {
     e.preventDefault();
     const res = await fetch("/api/admin/games", {
@@ -85,6 +91,7 @@ export default function AdminGamesPage() {
         weekId,
         league,
         ...newGame,
+        gameTime: localToISO(newGame.gameTime),
       }),
     });
 
@@ -103,7 +110,7 @@ export default function AdminGamesPage() {
     const res = await fetch("/api/admin/games", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...editData }),
+      body: JSON.stringify({ id, ...editData, gameTime: localToISO(editData.gameTime) }),
     });
 
     if (res.ok) {
@@ -126,13 +133,21 @@ export default function AdminGamesPage() {
     }
   }
 
+  // Convert UTC to local datetime-local input value
+  function toLocalDatetimeString(utcString: string) {
+    const d = new Date(utcString);
+    const offset = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - offset * 60000);
+    return local.toISOString().slice(0, 16);
+  }
+
   function startEdit(game: Game) {
     setEditingId(game.id);
     setEditData({
       awayTeam: game.awayTeam,
       homeTeam: game.homeTeam,
       spread: String(game.spread),
-      gameTime: new Date(game.gameTime).toISOString().slice(0, 16),
+      gameTime: toLocalDatetimeString(game.gameTime),
       isMondayNight: game.isMondayNight,
     });
   }

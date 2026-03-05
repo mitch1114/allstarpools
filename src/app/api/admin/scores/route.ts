@@ -73,3 +73,27 @@ export async function POST(req: NextRequest) {
     picksScored: picks.length,
   });
 }
+
+export async function PUT(req: NextRequest) {
+  const { error, status } = await requireAdmin();
+  if (error) return NextResponse.json({ error }, { status });
+
+  const { gameId } = await req.json();
+
+  if (!gameId) {
+    return NextResponse.json({ error: "Game ID required" }, { status: 400 });
+  }
+
+  // Unfinalize game - reset scores and pick points
+  await prisma.game.update({
+    where: { id: gameId },
+    data: { isFinal: false, awayScore: null, homeScore: null },
+  });
+
+  await prisma.pick.updateMany({
+    where: { gameId },
+    data: { points: null },
+  });
+
+  return NextResponse.json({ success: true });
+}

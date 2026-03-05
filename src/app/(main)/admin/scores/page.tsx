@@ -73,13 +73,49 @@ export default function AdminScoresPage() {
       setMessage(
         `Scored! ${data.picksScored} picks updated.`
       );
-      // Refresh games
+      // Refresh games and update score inputs
       const gamesRes = await fetch(
         `/api/admin/games?week=${weekId}&league=${league}`
       );
       const gamesData = await gamesRes.json();
-      setGames(gamesData.games || []);
+      const refreshedGames = gamesData.games || [];
+      setGames(refreshedGames);
+      const updatedScores: Record<string, { away: string; home: string }> = {};
+      for (const g of refreshedGames) {
+        updatedScores[g.id] = {
+          away: g.awayScore != null ? String(g.awayScore) : "",
+          home: g.homeScore != null ? String(g.homeScore) : "",
+        };
+      }
+      setScores(updatedScores);
     } else {
+      setMessage(`Error: ${data.error}`);
+    }
+  }
+
+  async function handleUnfinalize(gameId: string) {
+    const res = await fetch("/api/admin/scores", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameId }),
+    });
+
+    if (res.ok) {
+      setMessage("Game unfinalized. You can now edit the score and re-score.");
+      const gamesRes = await fetch(`/api/admin/games?week=${weekId}&league=${league}`);
+      const gamesData = await gamesRes.json();
+      const refreshedGames = gamesData.games || [];
+      setGames(refreshedGames);
+      const updatedScores: Record<string, { away: string; home: string }> = {};
+      for (const g of refreshedGames) {
+        updatedScores[g.id] = {
+          away: g.awayScore != null ? String(g.awayScore) : "",
+          home: g.homeScore != null ? String(g.homeScore) : "",
+        };
+      }
+      setScores(updatedScores);
+    } else {
+      const data = await res.json();
       setMessage(`Error: ${data.error}`);
     }
   }
@@ -245,7 +281,7 @@ export default function AdminScoresPage() {
                     <span style={{ color: "#999" }}>Pending</span>
                   )}
                 </td>
-                <td style={tdStyle}>
+                <td style={{ ...tdStyle, display: "flex", gap: "4px" }}>
                   <button
                     onClick={() => handleScore(game.id)}
                     style={{
@@ -261,6 +297,22 @@ export default function AdminScoresPage() {
                   >
                     {game.isFinal ? "Re-Score" : "Score"}
                   </button>
+                  {game.isFinal && (
+                    <button
+                      onClick={() => handleUnfinalize(game.id)}
+                      style={{
+                        padding: "4px 8px",
+                        background: "#cc6600",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "2px",
+                        fontSize: "10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Undo
+                    </button>
+                  )}
                 </td>
               </tr>
             ))

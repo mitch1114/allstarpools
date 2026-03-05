@@ -108,22 +108,29 @@ export default function PickSheetPage() {
     });
   }
 
-  async function handleSubmit() {
+  async function savePicks(isDraft: boolean) {
     const selectedPicks = Object.values(pickStates).filter((p) => p.selection);
 
-    if (selectedPicks.length < 10) {
-      setMessage(`Please select at least 10 ${league} games (you have ${selectedPicks.length}).`);
-      return;
+    if (!isDraft) {
+      if (selectedPicks.length < 10) {
+        setMessage(`Please select at least 10 ${league} games (you have ${selectedPicks.length}).`);
+        return;
+      }
+
+      if (selectedPicks.length > 10) {
+        setMessage(`Please select exactly 10 ${league} games (you have ${selectedPicks.length}).`);
+        return;
+      }
+
+      const hotPicks = selectedPicks.filter((p) => p.isHotPick);
+      if (hotPicks.length !== 3) {
+        setMessage(`You must designate exactly 3 Hot Picks (you have ${hotPicks.length}).`);
+        return;
+      }
     }
 
-    if (selectedPicks.length > 10) {
-      setMessage(`Please select exactly 10 ${league} games (you have ${selectedPicks.length}).`);
-      return;
-    }
-
-    const hotPicks = selectedPicks.filter((p) => p.isHotPick);
-    if (hotPicks.length !== 3) {
-      setMessage(`You must designate exactly 3 Hot Picks (you have ${hotPicks.length}).`);
+    if (selectedPicks.length === 0) {
+      setMessage("No picks to save.");
       return;
     }
 
@@ -144,9 +151,19 @@ export default function PickSheetPage() {
 
     if (data.errors?.length) {
       setMessage(`Saved ${data.saved} picks. Errors: ${data.errors.join("; ")}`);
+    } else if (isDraft) {
+      setMessage(`Draft saved! ${data.saved} pick(s) saved. Complete your remaining picks before the deadline.`);
     } else {
       setMessage(`All ${data.saved} picks saved successfully!`);
     }
+  }
+
+  async function handleSubmit() {
+    await savePicks(false);
+  }
+
+  async function handleSaveDraft() {
+    await savePicks(true);
   }
 
   function formatSpread(game: Game) {
@@ -212,8 +229,8 @@ export default function PickSheetPage() {
           color: "#666600",
         }}
       >
-        Select 10 games (radio buttons) then mark exactly 3 as Hot Picks (HP checkbox).
-        Regular picks = 1pt correct, 0 wrong. Hot Picks = 2pts correct, -1 wrong. Pushes = loss.
+        Select 10 games then mark exactly 3 as Hot Picks (HP). Use &quot;Save Draft&quot; to save partial picks (e.g., Thursday night game).
+        &quot;Submit Picks&quot; requires 10 picks + 3 Hot Picks. Regular = 1pt correct, 0 wrong. Hot = 2pts correct, -1 wrong. Push = loss.
       </div>
 
       {/* Games Table */}
@@ -394,22 +411,40 @@ export default function PickSheetPage() {
             </span>
           )}
         </div>
-        <button
-          onClick={handleSubmit}
-          disabled={saving}
-          style={{
-            padding: "10px 30px",
-            background: "#006600",
-            color: "#fff",
-            border: "none",
-            borderRadius: "2px",
-            fontSize: "14px",
-            fontWeight: "bold",
-            cursor: saving ? "wait" : "pointer",
-          }}
-        >
-          {saving ? "Saving..." : "SUBMIT PICKS"}
-        </button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            onClick={handleSaveDraft}
+            disabled={saving}
+            style={{
+              padding: "10px 20px",
+              background: "#003366",
+              color: "#fff",
+              border: "none",
+              borderRadius: "2px",
+              fontSize: "13px",
+              fontWeight: "bold",
+              cursor: saving ? "wait" : "pointer",
+            }}
+          >
+            {saving ? "Saving..." : "SAVE DRAFT"}
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            style={{
+              padding: "10px 30px",
+              background: "#006600",
+              color: "#fff",
+              border: "none",
+              borderRadius: "2px",
+              fontSize: "14px",
+              fontWeight: "bold",
+              cursor: saving ? "wait" : "pointer",
+            }}
+          >
+            {saving ? "Saving..." : "SUBMIT PICKS"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,35 +1,35 @@
 "use client";
 
-import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function LoginPage() {
-  const [playerCode, setPlayerCode] = useState("");
-  const [password, setPassword] = useState("");
+export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setMessage("");
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      playerCode,
-      password,
-      redirect: false,
+    const res = await fetch("/api/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
 
+    const data = await res.json();
     setLoading(false);
 
-    if (result?.error) {
-      setError("Invalid Player Code or Password.");
+    if (!res.ok) {
+      setError(data.error || "Something went wrong.");
     } else {
-      router.push("/dashboard");
-      router.refresh();
+      setMessage(
+        "If an account exists with that email, you will receive a reset link. Check your inbox (and spam folder)."
+      );
     }
   }
 
@@ -59,12 +59,12 @@ export default function LoginPage() {
         <h1
           style={{
             color: "#003366",
-            fontSize: "28px",
+            fontSize: "22px",
             fontWeight: "bold",
             marginBottom: "4px",
           }}
         >
-          ★ ALL STAR POOLS ★
+          Forgot Password / Code
         </h1>
         <p
           style={{
@@ -74,38 +74,10 @@ export default function LoginPage() {
             fontStyle: "italic",
           }}
         >
-          NFL &amp; NCAAF Spread Pool
+          Enter your email to receive your player code and a password reset link.
         </p>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "12px", textAlign: "left" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "12px",
-                fontWeight: "bold",
-                color: "#333",
-                marginBottom: "4px",
-              }}
-            >
-              Player Code:
-            </label>
-            <input
-              type="text"
-              value={playerCode}
-              onChange={(e) => setPlayerCode(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "8px",
-                border: "1px solid #999",
-                borderRadius: "2px",
-                fontSize: "14px",
-                boxSizing: "border-box",
-              }}
-              required
-            />
-          </div>
-
           <div style={{ marginBottom: "16px", textAlign: "left" }}>
             <label
               style={{
@@ -116,12 +88,12 @@ export default function LoginPage() {
                 marginBottom: "4px",
               }}
             >
-              Password:
+              Email Address:
             </label>
             <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               style={{
                 width: "100%",
                 padding: "8px",
@@ -140,6 +112,12 @@ export default function LoginPage() {
             </p>
           )}
 
+          {message && (
+            <p style={{ color: "#006600", fontSize: "12px", marginBottom: "12px" }}>
+              {message}
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -155,43 +133,19 @@ export default function LoginPage() {
               cursor: loading ? "wait" : "pointer",
             }}
           >
-            {loading ? "Logging in..." : "LOG IN"}
+            {loading ? "Sending..." : "SEND RESET LINK"}
           </button>
         </form>
 
-        <div style={{ marginTop: "16px", fontSize: "11px" }}>
+        <div style={{ marginTop: "16px", fontSize: "12px" }}>
           <Link
-            href="/forgot-password"
+            href="/login"
             style={{ color: "#003366", textDecoration: "underline" }}
           >
-            Forgot password or code?
-          </Link>
-        </div>
-
-        <div
-          style={{
-            marginTop: "20px",
-            paddingTop: "16px",
-            borderTop: "1px solid #ddd",
-            fontSize: "12px",
-          }}
-        >
-          <Link
-            href="/register"
-            style={{
-              color: "#003366",
-              fontWeight: "bold",
-              textDecoration: "underline",
-            }}
-          >
-            NEW players, Click Here
+            Back to Login
           </Link>
         </div>
       </div>
-
-      <p style={{ marginTop: "16px", color: "#999", fontSize: "10px" }}>
-        &copy; {new Date().getFullYear()} All Star Pools
-      </p>
     </div>
   );
 }

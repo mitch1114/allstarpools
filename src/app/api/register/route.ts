@@ -3,9 +3,9 @@ import { hashSync } from "bcryptjs";
 import { prisma } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
-  const { name, playerCode, password } = await req.json();
+  const { name, email, playerCode, password } = await req.json();
 
-  if (!name || !playerCode || !password) {
+  if (!name || !email || !playerCode || !password) {
     return NextResponse.json(
       { error: "All fields are required." },
       { status: 400 }
@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
   await prisma.user.create({
     data: {
       name,
+      email,
       playerCode,
       password: hashed,
     },

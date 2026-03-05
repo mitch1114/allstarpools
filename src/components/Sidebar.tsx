@@ -31,6 +31,11 @@ export default function Sidebar() {
         setWeeks(data.weeks || []);
         if (!selectedWeek && data.activeWeek) {
           setSelectedWeek(data.activeWeek);
+          // Navigate to update URL params so pages get the week
+          const params = new URLSearchParams();
+          params.set("league", selectedLeague);
+          params.set("week", data.activeWeek);
+          router.replace(`${pathname}?${params.toString()}`);
         }
       });
   }, []);
@@ -60,6 +65,7 @@ export default function Sidebar() {
     { href: "/my-picks", label: "My Picks" },
     { href: "/all-picks", label: "All Picks" },
     { href: "/standings", label: "Standings" },
+    { href: "/history", label: "History" },
     { href: "/rules", label: "Rules" },
     { href: "/account", label: "Account" },
   ];
