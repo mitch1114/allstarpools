@@ -88,7 +88,6 @@ export default function PickSheetPage() {
       const current = prev[gameId];
       if (!current || !current.selection) return prev;
 
-      // Count current hot picks (excluding this one)
       const hotPickCount = Object.values(prev).filter(
         (p) => p.isHotPick && p.gameId !== gameId
       ).length;
@@ -116,12 +115,10 @@ export default function PickSheetPage() {
         setMessage(`Please select at least 10 ${league} games (you have ${selectedPicks.length}).`);
         return;
       }
-
       if (selectedPicks.length > 10) {
         setMessage(`Please select exactly 10 ${league} games (you have ${selectedPicks.length}).`);
         return;
       }
-
       const hotPicks = selectedPicks.filter((p) => p.isHotPick);
       if (hotPicks.length !== 3) {
         setMessage(`You must designate exactly 3 Hot Picks (you have ${hotPicks.length}).`);
@@ -158,19 +155,13 @@ export default function PickSheetPage() {
     }
   }
 
-  async function handleSubmit() {
-    await savePicks(false);
-  }
-
-  async function handleSaveDraft() {
-    await savePicks(true);
-  }
-
-  function formatSpread(game: Game) {
+  function getSpreadLabel(game: Game, side: "home" | "away") {
     if (game.spread === 0) return "PK";
-    // spread is from home team perspective
-    if (game.spread < 0) return `${game.homeTeam} ${game.spread}`;
-    return `${game.awayTeam} -${game.spread}`;
+    if (side === "home") {
+      return game.spread < 0 ? `(${game.spread})` : `(+${game.spread})`;
+    }
+    // away
+    return game.spread > 0 ? `(-${game.spread})` : `(+${Math.abs(game.spread)})`;
   }
 
   function formatGameTime(dt: string) {
@@ -213,8 +204,13 @@ export default function PickSheetPage() {
         <h2 style={{ margin: 0, fontSize: "18px" }}>
           {league} Pick Sheet
         </h2>
-        <div style={{ fontSize: "11px" }}>
-          Picks: {selectedCount}/10 | Hot Picks: {hotPickCount}/3
+        <div style={{ fontSize: "12px" }}>
+          <span style={{ marginRight: "12px" }}>
+            Picks: <strong>{selectedCount}</strong>/10
+          </span>
+          <span>
+            Hot Picks: <strong style={{ color: "#ffcc00" }}>{hotPickCount}</strong>/3
+          </span>
         </div>
       </div>
 
@@ -224,128 +220,189 @@ export default function PickSheetPage() {
           background: "#fffff0",
           border: "1px solid #eee8aa",
           borderTop: "none",
-          padding: "10px 16px",
+          padding: "8px 16px",
           fontSize: "11px",
           color: "#666600",
         }}
       >
-        Select 10 games then mark exactly 3 as Hot Picks (HP). Use &quot;Save Draft&quot; to save partial picks (e.g., Thursday night game).
-        &quot;Submit Picks&quot; requires 10 picks + 3 Hot Picks. Regular = 1pt correct, 0 wrong. Hot = 2pts correct, -1 wrong. Push = loss.
+        Click a team to pick them. Click the fire icon to mark as a Hot Pick (2x points).
+        Use &quot;Save Draft&quot; to save partial picks. &quot;Submit&quot; requires 10 picks + 3 Hot Picks.
       </div>
 
-      {/* Games Table */}
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          background: "#fff",
-          border: "1px solid #ccc",
-          fontSize: "12px",
-        }}
-      >
-        <thead>
-          <tr style={{ background: "#e8e8e0" }}>
-            <th style={thStyle}>Game</th>
-            <th style={thStyle}>Spread</th>
-            <th style={thStyle}>Time</th>
-            <th style={{ ...thStyle, width: "60px" }}>Away</th>
-            <th style={{ ...thStyle, width: "60px" }}>Home</th>
-            <th style={{ ...thStyle, width: "40px" }}>HP</th>
-          </tr>
-        </thead>
-        <tbody>
-          {games.map((game, idx) => {
-            const locked = isLocked(game);
-            const pick = pickStates[game.id];
-            const existing = existingPicks[game.id];
-            const isSelected = !!pick?.selection;
+      {/* Game Cards */}
+      <div style={{ background: "#fff", border: "1px solid #ccc", borderTop: "none" }}>
+        {games.map((game, idx) => {
+          const locked = isLocked(game);
+          const pick = pickStates[game.id];
+          const awaySelected = pick?.selection === "away";
+          const homeSelected = pick?.selection === "home";
+          const isHot = pick?.isHotPick || false;
 
-            return (
-              <tr
-                key={game.id}
+          return (
+            <div
+              key={game.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "8px 12px",
+                gap: "8px",
+                borderBottom: "1px solid #eee",
+                background: locked
+                  ? "#f5f5f2"
+                  : isHot
+                    ? "#fff8e0"
+                    : idx % 2 === 0
+                      ? "#fff"
+                      : "#fafaf8",
+                opacity: locked ? 0.55 : 1,
+              }}
+            >
+              {/* Game time */}
+              <div
                 style={{
-                  background: locked
-                    ? "#f0f0f0"
-                    : isSelected
-                      ? "#e8f5e8"
-                      : idx % 2 === 0
-                        ? "#fff"
-                        : "#fafaf5",
-                  opacity: locked ? 0.6 : 1,
+                  width: "90px",
+                  flexShrink: 0,
+                  fontSize: "10px",
+                  color: "#888",
+                  lineHeight: "1.3",
                 }}
               >
-                <td style={tdStyle}>
-                  <span style={{ fontWeight: "bold" }}>{game.awayTeam}</span>
-                  <span style={{ color: "#999", margin: "0 4px" }}>@</span>
-                  <span style={{ fontWeight: "bold" }}>{game.homeTeam}</span>
-                  {game.isMondayNight && (
-                    <span
-                      style={{
-                        marginLeft: "6px",
-                        fontSize: "9px",
-                        background: "#ffcc00",
-                        color: "#333",
-                        padding: "1px 4px",
-                        borderRadius: "2px",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      MNF
-                    </span>
-                  )}
-                  {locked && (
-                    <span
-                      style={{
-                        marginLeft: "6px",
-                        fontSize: "9px",
-                        color: "#cc0000",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      LOCKED
-                    </span>
-                  )}
-                </td>
-                <td style={{ ...tdStyle, textAlign: "center", fontWeight: "bold", color: "#660000" }}>
-                  {formatSpread(game)}
-                </td>
-                <td style={{ ...tdStyle, textAlign: "center", fontSize: "10px", color: "#666" }}>
-                  {formatGameTime(game.gameTime)}
-                </td>
-                <td style={{ ...tdStyle, textAlign: "center" }}>
-                  <input
-                    type="radio"
-                    name={`pick-${game.id}`}
-                    checked={pick?.selection === "away"}
-                    onChange={() => handleSelection(game.id, "away")}
-                    disabled={locked}
-                    style={{ cursor: locked ? "not-allowed" : "pointer" }}
-                  />
-                </td>
-                <td style={{ ...tdStyle, textAlign: "center" }}>
-                  <input
-                    type="radio"
-                    name={`pick-${game.id}`}
-                    checked={pick?.selection === "home"}
-                    onChange={() => handleSelection(game.id, "home")}
-                    disabled={locked}
-                    style={{ cursor: locked ? "not-allowed" : "pointer" }}
-                  />
-                </td>
-                <td style={{ ...tdStyle, textAlign: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={pick?.isHotPick || false}
-                    onChange={() => handleHotPick(game.id)}
-                    disabled={locked || !pick?.selection}
-                    style={{ cursor: locked || !pick?.selection ? "not-allowed" : "pointer" }}
-                  />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                {formatGameTime(game.gameTime)}
+                {game.isMondayNight && (
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: "9px",
+                      background: "#ffcc00",
+                      color: "#333",
+                      padding: "1px 4px",
+                      borderRadius: "2px",
+                      fontWeight: "bold",
+                      width: "fit-content",
+                      marginTop: "2px",
+                    }}
+                  >
+                    MNF
+                  </span>
+                )}
+                {locked && (
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: "9px",
+                      color: "#cc0000",
+                      fontWeight: "bold",
+                      marginTop: "2px",
+                    }}
+                  >
+                    LOCKED
+                  </span>
+                )}
+              </div>
+
+              {/* Away team button */}
+              <button
+                onClick={() => !locked && handleSelection(game.id, "away")}
+                disabled={locked}
+                style={{
+                  flex: 1,
+                  padding: "10px 8px",
+                  background: awaySelected ? "#003366" : "#f0f0ed",
+                  color: awaySelected ? "#fff" : "#333",
+                  border: awaySelected ? "2px solid #003366" : "2px solid #ddd",
+                  borderRadius: "4px",
+                  fontSize: "13px",
+                  fontWeight: "bold",
+                  cursor: locked ? "not-allowed" : "pointer",
+                  textAlign: "center",
+                  transition: "all 0.15s",
+                }}
+              >
+                {game.awayTeam}
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "10px",
+                    fontWeight: "normal",
+                    color: awaySelected ? "#aaccee" : "#888",
+                    marginTop: "2px",
+                  }}
+                >
+                  {getSpreadLabel(game, "away")}
+                </span>
+              </button>
+
+              {/* VS */}
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#999",
+                  fontWeight: "bold",
+                  flexShrink: 0,
+                }}
+              >
+                @
+              </div>
+
+              {/* Home team button */}
+              <button
+                onClick={() => !locked && handleSelection(game.id, "home")}
+                disabled={locked}
+                style={{
+                  flex: 1,
+                  padding: "10px 8px",
+                  background: homeSelected ? "#003366" : "#f0f0ed",
+                  color: homeSelected ? "#fff" : "#333",
+                  border: homeSelected ? "2px solid #003366" : "2px solid #ddd",
+                  borderRadius: "4px",
+                  fontSize: "13px",
+                  fontWeight: "bold",
+                  cursor: locked ? "not-allowed" : "pointer",
+                  textAlign: "center",
+                  transition: "all 0.15s",
+                }}
+              >
+                {game.homeTeam}
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "10px",
+                    fontWeight: "normal",
+                    color: homeSelected ? "#aaccee" : "#888",
+                    marginTop: "2px",
+                  }}
+                >
+                  {getSpreadLabel(game, "home")}
+                </span>
+              </button>
+
+              {/* Hot Pick button */}
+              <button
+                onClick={() => !locked && pick?.selection && handleHotPick(game.id)}
+                disabled={locked || !pick?.selection}
+                title={isHot ? "Remove Hot Pick" : "Mark as Hot Pick (2x points)"}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  flexShrink: 0,
+                  background: isHot ? "#ff6600" : "transparent",
+                  color: isHot ? "#fff" : (!pick?.selection || locked) ? "#ddd" : "#cc6600",
+                  border: isHot ? "2px solid #ff6600" : "2px solid #ddd",
+                  borderRadius: "50%",
+                  fontSize: "16px",
+                  cursor: locked || !pick?.selection ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.15s",
+                }}
+              >
+                {isHot ? "\u2605" : "\u2606"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
 
       {/* Monday Night Tiebreaker */}
       {games.some((g) => g.isMondayNight) && (
@@ -364,7 +421,7 @@ export default function PickSheetPage() {
               color: "#003366",
             }}
           >
-            Monday Night Tiebreaker — Total Combined Score:{" "}
+            Monday Night Tiebreaker &mdash; Total Combined Score:{" "}
             <input
               type="number"
               value={tiebreaker}
@@ -391,19 +448,21 @@ export default function PickSheetPage() {
           background: "#fff",
           border: "1px solid #ccc",
           borderTop: "none",
-          padding: "16px",
+          padding: "12px 16px",
           borderRadius: "0 0 4px 4px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: "wrap",
+          gap: "8px",
         }}
       >
-        <div>
+        <div style={{ flex: 1, minWidth: "200px" }}>
           {message && (
             <span
               style={{
                 fontSize: "12px",
-                color: message.includes("success") ? "#006600" : "#cc0000",
+                color: message.includes("success") || message.includes("Draft saved") ? "#006600" : "#cc0000",
                 fontWeight: "bold",
               }}
             >
@@ -413,14 +472,14 @@ export default function PickSheetPage() {
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
           <button
-            onClick={handleSaveDraft}
+            onClick={() => savePicks(true)}
             disabled={saving}
             style={{
               padding: "10px 20px",
               background: "#003366",
               color: "#fff",
               border: "none",
-              borderRadius: "2px",
+              borderRadius: "4px",
               fontSize: "13px",
               fontWeight: "bold",
               cursor: saving ? "wait" : "pointer",
@@ -429,14 +488,14 @@ export default function PickSheetPage() {
             {saving ? "Saving..." : "SAVE DRAFT"}
           </button>
           <button
-            onClick={handleSubmit}
+            onClick={() => savePicks(false)}
             disabled={saving}
             style={{
               padding: "10px 30px",
               background: "#006600",
               color: "#fff",
               border: "none",
-              borderRadius: "2px",
+              borderRadius: "4px",
               fontSize: "14px",
               fontWeight: "bold",
               cursor: saving ? "wait" : "pointer",
@@ -449,17 +508,3 @@ export default function PickSheetPage() {
     </div>
   );
 }
-
-const thStyle: React.CSSProperties = {
-  padding: "8px 10px",
-  textAlign: "left",
-  fontSize: "11px",
-  fontWeight: "bold",
-  color: "#333",
-  borderBottom: "2px solid #ccc",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "8px 10px",
-  borderBottom: "1px solid #eee",
-};

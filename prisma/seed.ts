@@ -3,6 +3,163 @@ import { hashSync } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// NFL teams shuffled into matchups for variety across weeks
+const nflMatchups = [
+  // Week 1
+  [
+    { away: "Chiefs", home: "Ravens", spread: -1.5 },
+    { away: "Eagles", home: "Packers", spread: 3 },
+    { away: "49ers", home: "Steelers", spread: -4 },
+    { away: "Cowboys", home: "Browns", spread: -3 },
+    { away: "Bills", home: "Cardinals", spread: -6.5 },
+    { away: "Dolphins", home: "Jaguars", spread: -3 },
+    { away: "Vikings", home: "Giants", spread: -2.5 },
+    { away: "Bengals", home: "Patriots", spread: -6 },
+    { away: "Texans", home: "Colts", spread: -3 },
+    { away: "Bears", home: "Titans", spread: -1 },
+    { away: "Rams", home: "Lions", spread: 3.5 },
+    { away: "Jets", home: "Chargers", spread: 2.5 },
+  ],
+  // Week 2
+  [
+    { away: "Ravens", home: "Bills", spread: -2 },
+    { away: "Lions", home: "49ers", spread: 1 },
+    { away: "Packers", home: "Cowboys", spread: -3.5 },
+    { away: "Steelers", home: "Dolphins", spread: -1.5 },
+    { away: "Browns", home: "Eagles", spread: 6 },
+    { away: "Chargers", home: "Chiefs", spread: 4.5 },
+    { away: "Patriots", home: "Vikings", spread: 3 },
+    { away: "Colts", home: "Bears", spread: -2 },
+    { away: "Titans", home: "Bengals", spread: 4 },
+    { away: "Giants", home: "Texans", spread: 7 },
+    { away: "Cardinals", home: "Rams", spread: 3.5 },
+    { away: "Jaguars", home: "Jets", spread: 1.5 },
+  ],
+  // Week 3
+  [
+    { away: "49ers", home: "Chiefs", spread: 2.5 },
+    { away: "Cowboys", home: "Ravens", spread: 3 },
+    { away: "Eagles", home: "Lions", spread: 1 },
+    { away: "Bills", home: "Packers", spread: -3 },
+    { away: "Dolphins", home: "Bengals", spread: -1.5 },
+    { away: "Vikings", home: "Chargers", spread: -2 },
+    { away: "Texans", home: "Steelers", spread: -4 },
+    { away: "Jets", home: "Browns", spread: -1 },
+    { away: "Bears", home: "Giants", spread: -3.5 },
+    { away: "Rams", home: "Patriots", spread: -6 },
+    { away: "Titans", home: "Cardinals", spread: 1.5 },
+    { away: "Colts", home: "Jaguars", spread: -2.5 },
+  ],
+  // Week 4
+  [
+    { away: "Lions", home: "Cowboys", spread: -3 },
+    { away: "Chiefs", home: "Eagles", spread: -1.5 },
+    { away: "Ravens", home: "49ers", spread: -2.5 },
+    { away: "Packers", home: "Vikings", spread: -1 },
+    { away: "Bengals", home: "Bills", spread: 3 },
+    { away: "Chargers", home: "Dolphins", spread: 2 },
+    { away: "Browns", home: "Texans", spread: 4.5 },
+    { away: "Patriots", home: "Jets", spread: 3.5 },
+    { away: "Giants", home: "Colts", spread: 2 },
+    { away: "Cardinals", home: "Bears", spread: 1.5 },
+    { away: "Jaguars", home: "Titans", spread: 3 },
+    { away: "Steelers", home: "Rams", spread: -1.5 },
+  ],
+  // Week 5
+  [
+    { away: "Eagles", home: "49ers", spread: 2 },
+    { away: "Cowboys", home: "Bills", spread: 3.5 },
+    { away: "Lions", home: "Ravens", spread: 1.5 },
+    { away: "Vikings", home: "Chiefs", spread: 3 },
+    { away: "Dolphins", home: "Packers", spread: -1 },
+    { away: "Bengals", home: "Chargers", spread: -2.5 },
+    { away: "Texans", home: "Jets", spread: -3 },
+    { away: "Steelers", home: "Browns", spread: -2 },
+    { away: "Bears", home: "Patriots", spread: -4 },
+    { away: "Rams", home: "Giants", spread: -5.5 },
+    { away: "Colts", home: "Titans", spread: -1.5 },
+    { away: "Cardinals", home: "Jaguars", spread: -3 },
+  ],
+];
+
+const ncaafMatchups = [
+  // Week 1
+  [
+    { away: "Alabama", home: "Wisconsin", spread: -14 },
+    { away: "Ohio State", home: "Texas", spread: -3 },
+    { away: "Georgia", home: "Clemson", spread: -7.5 },
+    { away: "Michigan", home: "Oklahoma", spread: 2.5 },
+    { away: "USC", home: "LSU", spread: 1.5 },
+    { away: "Oregon", home: "Boise State", spread: -10 },
+    { away: "Penn State", home: "West Virginia", spread: -13.5 },
+    { away: "Florida State", home: "Notre Dame", spread: 7 },
+    { away: "Tennessee", home: "Virginia Tech", spread: -6 },
+    { away: "Miami", home: "Florida", spread: -3.5 },
+    { away: "Auburn", home: "Cal", spread: -4 },
+    { away: "Texas A&M", home: "Arizona State", spread: -5.5 },
+  ],
+  // Week 2
+  [
+    { away: "Texas", home: "Alabama", spread: 3 },
+    { away: "Notre Dame", home: "Ohio State", spread: 6.5 },
+    { away: "Clemson", home: "Michigan", spread: 2 },
+    { away: "Oklahoma", home: "Georgia", spread: 10 },
+    { away: "LSU", home: "Oregon", spread: 3.5 },
+    { away: "Boise State", home: "USC", spread: 7 },
+    { away: "West Virginia", home: "Tennessee", spread: 4 },
+    { away: "Virginia Tech", home: "Penn State", spread: 10.5 },
+    { away: "Florida", home: "Auburn", spread: -1.5 },
+    { away: "Cal", home: "Miami", spread: 8 },
+    { away: "Arizona State", home: "Florida State", spread: 3 },
+    { away: "Wisconsin", home: "Texas A&M", spread: 2.5 },
+  ],
+  // Week 3
+  [
+    { away: "Ohio State", home: "Oregon", spread: -2.5 },
+    { away: "Alabama", home: "Georgia", spread: 3 },
+    { away: "Michigan", home: "Notre Dame", spread: 4 },
+    { away: "Texas", home: "LSU", spread: -3 },
+    { away: "USC", home: "Clemson", spread: -1.5 },
+    { away: "Oklahoma", home: "Tennessee", spread: 2 },
+    { away: "Penn State", home: "Auburn", spread: -7 },
+    { away: "Florida State", home: "Miami", spread: 2.5 },
+    { away: "Boise State", home: "West Virginia", spread: -4 },
+    { away: "Texas A&M", home: "Virginia Tech", spread: -5 },
+    { away: "Florida", home: "Wisconsin", spread: -2 },
+    { away: "Arizona State", home: "Cal", spread: -3 },
+  ],
+  // Week 4
+  [
+    { away: "Georgia", home: "Texas", spread: -1.5 },
+    { away: "Oregon", home: "Michigan", spread: -3 },
+    { away: "Notre Dame", home: "Alabama", spread: 7 },
+    { away: "LSU", home: "Ohio State", spread: 6 },
+    { away: "Clemson", home: "Oklahoma", spread: -4 },
+    { away: "Tennessee", home: "USC", spread: 1 },
+    { away: "Miami", home: "Penn State", spread: 3.5 },
+    { away: "Auburn", home: "Florida State", spread: 2 },
+    { away: "West Virginia", home: "Arizona State", spread: -1 },
+    { away: "Virginia Tech", home: "Florida", spread: 1.5 },
+    { away: "Cal", home: "Texas A&M", spread: 5 },
+    { away: "Wisconsin", home: "Boise State", spread: -2 },
+  ],
+  // Week 5
+  [
+    { away: "Texas", home: "Michigan", spread: -2 },
+    { away: "Georgia", home: "Oregon", spread: -1 },
+    { away: "Alabama", home: "Clemson", spread: -6 },
+    { away: "Ohio State", home: "Oklahoma", spread: -10 },
+    { away: "LSU", home: "Notre Dame", spread: 3.5 },
+    { away: "USC", home: "Penn State", spread: 2 },
+    { away: "Tennessee", home: "Florida", spread: -4.5 },
+    { away: "Miami", home: "Auburn", spread: -5 },
+    { away: "Florida State", home: "West Virginia", spread: -3 },
+    { away: "Boise State", home: "Virginia Tech", spread: -2.5 },
+    { away: "Arizona State", home: "Wisconsin", spread: 1 },
+    { away: "Texas A&M", home: "Cal", spread: -4 },
+  ],
+];
+
 async function main() {
   // Create admin user
   const admin = await prisma.user.upsert({
@@ -11,6 +168,7 @@ async function main() {
     create: {
       playerCode: "admin",
       name: "Jeff (Admin)",
+      email: "admin@allstarpools.com",
       password: hashSync("admin123", 10),
       isAdmin: true,
     },
@@ -23,24 +181,31 @@ async function main() {
     create: {
       playerCode: "demo",
       name: "Demo Player",
+      email: "demo@allstarpools.com",
       password: hashSync("demo123", 10),
       isAdmin: false,
     },
   });
 
-  // Create current season
+  // Create current season (2026 so dates are in the future)
   const season = await prisma.season.upsert({
-    where: { year: 2025 },
+    where: { year: 2026 },
     update: {},
     create: {
-      year: 2025,
+      year: 2026,
       isActive: true,
     },
   });
 
-  // Create NFL weeks (1-18)
+  // Deactivate any other seasons
+  await prisma.season.updateMany({
+    where: { id: { not: season.id } },
+    data: { isActive: false },
+  });
+
+  // Create weeks (1-18) starting Sep 2026
   for (let i = 1; i <= 18; i++) {
-    const startDate = new Date(2025, 8, 4 + (i - 1) * 7); // Sep 4, 2025
+    const startDate = new Date(2026, 8, 3 + (i - 1) * 7); // Sep 3, 2026 (Thursday)
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 4);
 
@@ -60,90 +225,88 @@ async function main() {
     });
   }
 
-  // Seed demo games for Week 1
-  const week1 = await prisma.week.findFirst({
-    where: { seasonId: season.id, number: 1 },
-  });
+  // Seed demo games for weeks 1-5
+  for (let weekNum = 1; weekNum <= 5; weekNum++) {
+    const week = await prisma.week.findFirst({
+      where: { seasonId: season.id, number: weekNum },
+    });
+    if (!week) continue;
 
-  if (week1) {
-    const existingGames = await prisma.game.count({ where: { weekId: week1.id } });
-
-    if (existingGames === 0) {
-      const sat = new Date("2025-09-06T16:00:00Z");
-      const sun1 = new Date("2025-09-07T17:00:00Z");
-      const sun4 = new Date("2025-09-07T20:25:00Z");
-      const snf = new Date("2025-09-08T00:20:00Z");
-      const mnf = new Date("2025-09-09T00:15:00Z");
-
-      const nflGames = [
-        { away: "Chiefs", home: "Ravens", spread: -1.5, time: sun4, mnf: false },
-        { away: "Eagles", home: "Packers", spread: 3, time: sun1, mnf: false },
-        { away: "49ers", home: "Steelers", spread: -4, time: sun1, mnf: false },
-        { away: "Cowboys", home: "Browns", spread: -3, time: sun1, mnf: false },
-        { away: "Bills", home: "Cardinals", spread: -6.5, time: sun4, mnf: false },
-        { away: "Dolphins", home: "Jaguars", spread: -3, time: sun1, mnf: false },
-        { away: "Vikings", home: "Giants", spread: -2.5, time: sun1, mnf: false },
-        { away: "Bengals", home: "Patriots", spread: -6, time: sun1, mnf: false },
-        { away: "Texans", home: "Colts", spread: -3, time: sun1, mnf: false },
-        { away: "Bears", home: "Titans", spread: -1, time: sun1, mnf: false },
-        { away: "Rams", home: "Lions", spread: 3.5, time: snf, mnf: false },
-        { away: "Jets", home: "Chargers", spread: 2.5, time: mnf, mnf: true },
-      ];
-
-      for (const g of nflGames) {
-        await prisma.game.create({
-          data: {
-            seasonId: season.id,
-            weekId: week1.id,
-            league: "NFL",
-            awayTeam: g.away,
-            homeTeam: g.home,
-            spread: g.spread,
-            gameTime: g.time,
-            isMondayNight: g.mnf,
-          },
-        });
-      }
-
-      const ncaafGames = [
-        { away: "Alabama", home: "Wisconsin", spread: -14 },
-        { away: "Ohio State", home: "Texas", spread: -3 },
-        { away: "Georgia", home: "Clemson", spread: -7.5 },
-        { away: "Michigan", home: "Oklahoma", spread: 2.5 },
-        { away: "USC", home: "LSU", spread: 1.5 },
-        { away: "Oregon", home: "Boise State", spread: -10 },
-        { away: "Penn State", home: "West Virginia", spread: -13.5 },
-        { away: "Florida State", home: "Notre Dame", spread: 7 },
-        { away: "Tennessee", home: "Virginia Tech", spread: -6 },
-        { away: "Miami", home: "Florida", spread: -3.5 },
-        { away: "Auburn", home: "Cal", spread: -4 },
-        { away: "Texas A&M", home: "Arizona State", spread: -5.5 },
-      ];
-
-      for (const g of ncaafGames) {
-        await prisma.game.create({
-          data: {
-            seasonId: season.id,
-            weekId: week1.id,
-            league: "NCAAF",
-            awayTeam: g.away,
-            homeTeam: g.home,
-            spread: g.spread,
-            gameTime: sat,
-            isMondayNight: false,
-          },
-        });
-      }
-
-      console.log("Seeded 12 NFL + 12 NCAAF demo games for Week 1");
-    } else {
-      console.log(`Week 1 already has ${existingGames} games, skipping demo seed`);
+    const existingGames = await prisma.game.count({ where: { weekId: week.id } });
+    if (existingGames > 0) {
+      console.log(`Week ${weekNum} already has ${existingGames} games, skipping`);
+      continue;
     }
+
+    // Dates: Saturday NCAAF, Sunday early/late NFL, SNF, MNF — all future
+    const baseDate = new Date(2026, 8, 3 + (weekNum - 1) * 7); // Thursday of the week
+    const sat = new Date(baseDate);
+    sat.setDate(sat.getDate() + 2); // Saturday
+    sat.setUTCHours(16, 0, 0, 0); // Noon ET
+
+    const sun1 = new Date(baseDate);
+    sun1.setDate(sun1.getDate() + 3); // Sunday
+    sun1.setUTCHours(17, 0, 0, 0); // 1pm ET
+
+    const sun4 = new Date(baseDate);
+    sun4.setDate(sun4.getDate() + 3);
+    sun4.setUTCHours(20, 25, 0, 0); // 4:25pm ET
+
+    const snf = new Date(baseDate);
+    snf.setDate(snf.getDate() + 4); // Monday 00:20 UTC = Sunday 8:20pm ET
+    snf.setUTCHours(0, 20, 0, 0);
+
+    const mnf = new Date(baseDate);
+    mnf.setDate(mnf.getDate() + 5); // Tuesday 00:15 UTC = Monday 8:15pm ET
+    mnf.setUTCHours(0, 15, 0, 0);
+
+    // NFL games
+    const nfl = nflMatchups[weekNum - 1];
+    for (let i = 0; i < nfl.length; i++) {
+      const g = nfl[i];
+      let time = sun1;
+      let isMnf = false;
+      if (i === nfl.length - 1) { time = mnf; isMnf = true; }
+      else if (i === nfl.length - 2) { time = snf; }
+      else if (i >= 8) { time = sun4; }
+
+      await prisma.game.create({
+        data: {
+          seasonId: season.id,
+          weekId: week.id,
+          league: "NFL",
+          awayTeam: g.away,
+          homeTeam: g.home,
+          spread: g.spread,
+          gameTime: time,
+          isMondayNight: isMnf,
+        },
+      });
+    }
+
+    // NCAAF games
+    const ncaaf = ncaafMatchups[weekNum - 1];
+    for (const g of ncaaf) {
+      await prisma.game.create({
+        data: {
+          seasonId: season.id,
+          weekId: week.id,
+          league: "NCAAF",
+          awayTeam: g.away,
+          homeTeam: g.home,
+          spread: g.spread,
+          gameTime: sat,
+          isMondayNight: false,
+        },
+      });
+    }
+
+    console.log(`Seeded 12 NFL + 12 NCAAF games for Week ${weekNum}`);
   }
 
   console.log("Seeded admin user:", admin.playerCode);
   console.log("Seeded demo user: demo / demo123");
-  console.log("Seeded season 2025 with 18 weeks");
+  console.log("Seeded season 2026 with 18 weeks");
 }
 
 main()
