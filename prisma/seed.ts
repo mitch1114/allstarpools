@@ -304,8 +304,158 @@ async function main() {
     console.log(`Seeded 12 NFL + 12 NCAAF games for Week ${weekNum}`);
   }
 
+  // Create fake players for standings data
+  const fakePlayers = [
+    { code: "bigmike", name: "Big Mike", email: "mike@test.com" },
+    { code: "luckylou", name: "Lucky Lou", email: "lou@test.com" },
+    { code: "pickmaster", name: "Tony Picks", email: "tony@test.com" },
+    { code: "spreadking", name: "Spread King Steve", email: "steve@test.com" },
+    { code: "chalky", name: "Chalk Charlie", email: "charlie@test.com" },
+  ];
+
+  const playerIds: string[] = [];
+  for (const fp of fakePlayers) {
+    const user = await prisma.user.upsert({
+      where: { playerCode: fp.code },
+      update: {},
+      create: {
+        playerCode: fp.code,
+        name: fp.name,
+        email: fp.email,
+        password: hashSync("test123", 10),
+        isAdmin: false,
+      },
+    });
+    playerIds.push(user.id);
+  }
+
+  // Also include admin and demo in standings
+  const adminUser = await prisma.user.findUnique({ where: { playerCode: "admin" } });
+  const demoUser = await prisma.user.findUnique({ where: { playerCode: "demo" } });
+  if (adminUser) playerIds.push(adminUser.id);
+  if (demoUser) playerIds.push(demoUser.id);
+
+  // Generate picks and scores for weeks 1-2 so standings have data
+  for (let weekNum = 1; weekNum <= 2; weekNum++) {
+    const week = await prisma.week.findFirst({
+      where: { seasonId: season.id, number: weekNum },
+    });
+    if (!week) continue;
+
+    // Get games for this week
+    const nflGamesDb = await prisma.game.findMany({
+      where: { weekId: week.id, league: "NFL" },
+      orderBy: { gameTime: "asc" },
+    });
+    const ncaafGamesDb = await prisma.game.findMany({
+      where: { weekId: week.id, league: "NCAAF" },
+      orderBy: { gameTime: "asc" },
+    });
+
+    // Score all games with random results (if not already scored)
+    const allGames = [...nflGamesDb, ...ncaafGamesDb];
+    for (const game of allGames) {
+      if (!game.isFinal) {
+        // Random scores
+        const homeScore = 14 + Math.floor(Math.random() * 24);
+        const awayScore = 10 + Math.floor(Math.random() * 24);
+        await prisma.game.update({
+          where: { id: game.id },
+          data: { homeScore, awayScore, isFinal: true },
+        });
+      }
+    }
+
+    // Create picks for each player
+    for (const userId of playerIds) {
+      const existingPicks = await prisma.pick.count({
+        where: { userId, weekId: week.id },
+      });
+      if (existingPicks > 0) continue;
+
+      // Pick 10 NFL games
+      for (let i = 0; i < Math.min(10, nflGamesDb.length); i++) {
+        const game = nflGamesDb[i];
+        const selection = Math.random() > 0.5 ? "home" : "away";
+        const isHotPick = i < 3; // first 3 are hot picks
+
+        await prisma.pick.create({
+          data: {
+            userId,
+            weekId: week.id,
+            gameId: game.id,
+            selection,
+            isHotPick,
+          },
+        });
+      }
+
+      // Pick 10 NCAAF games
+      for (let i = 0; i < Math.min(10, ncaafGamesDb.length); i++) {
+        const game = ncaafGamesDb[i];
+        const selection = Math.random() > 0.5 ? "home" : "away";
+        const isHotPick = i < 3;
+
+        await prisma.pick.create({
+          data: {
+            userId,
+            weekId: week.id,
+            gameId: game.id,
+            selection,
+            isHotPick,
+          },
+        });
+      }
+    }
+
+    // Now score all picks based on game results
+    const scoredGames = await prisma.game.findMany({
+      where: { weekId: week.id, isFinal: true },
+    });
+
+    for (const game of scoredGames) {
+      const picks = await prisma.pick.findMany({
+        where: { gameId: game.id, points: null },
+      });
+
+      for (const pick of picks) {
+        const aScore = game.awayScore!;
+        const hScore = game.homeScore!;
+        const adjustedHomeScore = hScore + game.spread;
+
+        let isCorrect: boolean;
+        let isPush: boolean;
+
+        if (pick.selection === "home") {
+          isPush = adjustedHomeScore === aScore;
+          isCorrect = adjustedHomeScore > aScore;
+        } else {
+          isPush = aScore === adjustedHomeScore;
+          isCorrect = aScore > adjustedHomeScore;
+        }
+
+        let points: number;
+        if (isPush) {
+          points = pick.isHotPick ? -1 : 0;
+        } else if (isCorrect) {
+          points = pick.isHotPick ? 2 : 1;
+        } else {
+          points = pick.isHotPick ? -1 : 0;
+        }
+
+        await prisma.pick.update({
+          where: { id: pick.id },
+          data: { points },
+        });
+      }
+    }
+
+    console.log(`Scored all picks for Week ${weekNum}`);
+  }
+
   console.log("Seeded admin user:", admin.playerCode);
   console.log("Seeded demo user: demo / demo123");
+  console.log("Seeded 5 fake players with picks for weeks 1-2");
   console.log("Seeded season 2026 with 18 weeks");
 }
 
