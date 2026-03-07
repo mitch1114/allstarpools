@@ -10,7 +10,6 @@ interface Game {
   homeTeam: string;
   spread: number;
   gameTime: string;
-  isMondayNight: boolean;
   isFinal: boolean;
 }
 
@@ -22,15 +21,13 @@ interface PickState {
 
 export default function PickSheetPage() {
   const searchParams = useSearchParams();
-  const league = searchParams.get("league") || "NFL";
+  const league = searchParams.get("league") || "NCAAF";
   const weekId = searchParams.get("week") || "";
 
   const [games, setGames] = useState<Game[]>([]);
   const [pickStates, setPickStates] = useState<Record<string, PickState>>({});
-  const [tiebreaker, setTiebreaker] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [existingPicks, setExistingPicks] = useState<Record<string, { selection: string; isHotPick: boolean }>>({});
 
   useEffect(() => {
     if (!weekId) return;
@@ -41,27 +38,18 @@ export default function PickSheetPage() {
     ]).then(([gamesData, picksData]) => {
       setGames(gamesData.games || []);
 
-      const existing: Record<string, { selection: string; isHotPick: boolean }> = {};
       const states: Record<string, PickState> = {};
 
       for (const p of picksData.picks || []) {
         if (p.game.league === league) {
-          existing[p.gameId] = {
-            selection: p.selection,
-            isHotPick: p.isHotPick,
-          };
           states[p.gameId] = {
             gameId: p.gameId,
             selection: p.selection,
             isHotPick: p.isHotPick,
           };
-          if (p.tiebreaker != null) {
-            setTiebreaker(String(p.tiebreaker));
-          }
         }
       }
 
-      setExistingPicks(existing);
       setPickStates(states);
     });
   }, [weekId, league]);
@@ -107,24 +95,8 @@ export default function PickSheetPage() {
     });
   }
 
-  async function savePicks(isDraft: boolean) {
+  async function submitPicks() {
     const selectedPicks = Object.values(pickStates).filter((p) => p.selection);
-
-    if (!isDraft) {
-      if (selectedPicks.length < 10) {
-        setMessage(`Please select at least 10 ${league} games (you have ${selectedPicks.length}).`);
-        return;
-      }
-      if (selectedPicks.length > 10) {
-        setMessage(`Please select exactly 10 ${league} games (you have ${selectedPicks.length}).`);
-        return;
-      }
-      const hotPicks = selectedPicks.filter((p) => p.isHotPick);
-      if (hotPicks.length !== 3) {
-        setMessage(`You must designate exactly 3 Hot Picks (you have ${hotPicks.length}).`);
-        return;
-      }
-    }
 
     if (selectedPicks.length === 0) {
       setMessage("No picks to save.");
@@ -139,7 +111,6 @@ export default function PickSheetPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         picks: selectedPicks,
-        tiebreaker: tiebreaker ? Number(tiebreaker) : null,
       }),
     });
 
@@ -148,10 +119,8 @@ export default function PickSheetPage() {
 
     if (data.errors?.length) {
       setMessage(`Saved ${data.saved} picks. Errors: ${data.errors.join("; ")}`);
-    } else if (isDraft) {
-      setMessage(`Draft saved! ${data.saved} pick(s) saved. Complete your remaining picks before the deadline.`);
     } else {
-      setMessage(`All ${data.saved} picks saved successfully!`);
+      setMessage(`${data.saved} pick(s) saved successfully!`);
     }
   }
 
@@ -181,7 +150,7 @@ export default function PickSheetPage() {
   if (!weekId) {
     return (
       <div style={{ fontFamily: "Verdana, Geneva, sans-serif", padding: "20px" }}>
-        <h2 style={{ color: "#003366" }}>Pick Sheet</h2>
+        <h2 style={{ color: "#003366" }}>Make Picks</h2>
         <p style={{ color: "#666" }}>Please select a week from the sidebar.</p>
       </div>
     );
@@ -202,11 +171,11 @@ export default function PickSheetPage() {
         }}
       >
         <h2 style={{ margin: 0, fontSize: "18px" }}>
-          {league} Pick Sheet
+          {league} - Make Picks
         </h2>
         <div style={{ fontSize: "12px" }}>
           <span style={{ marginRight: "12px" }}>
-            Picks: <strong>{selectedCount}</strong>/10
+            Picks: <strong>{selectedCount}</strong>
           </span>
           <span>
             Hot Picks: <strong style={{ color: "#ffcc00" }}>{hotPickCount}</strong>/3
@@ -225,8 +194,30 @@ export default function PickSheetPage() {
           color: "#666600",
         }}
       >
-        Click a team to pick them. Click the fire icon to mark as a Hot Pick (2x points).
-        Use &quot;Save Draft&quot; to save partial picks. &quot;Submit&quot; requires 10 picks + 3 Hot Picks.
+        Click a team to pick them. Click the star to mark as a Hot Pick (2x points).
+        You can submit any number of picks at a time.
+      </div>
+
+      {/* Column Headers */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "6px 12px",
+          gap: "8px",
+          background: "#e8e8e0",
+          border: "1px solid #ccc",
+          borderTop: "none",
+          fontSize: "10px",
+          fontWeight: "bold",
+          color: "#666",
+        }}
+      >
+        <div style={{ width: "90px", flexShrink: 0 }}>Time</div>
+        <div style={{ flex: 1, textAlign: "center" }}>Away</div>
+        <div style={{ width: "16px", flexShrink: 0 }}></div>
+        <div style={{ flex: 1, textAlign: "center" }}>Home</div>
+        <div style={{ width: "36px", flexShrink: 0, textAlign: "center" }}>HP</div>
       </div>
 
       {/* Game Cards */}
@@ -268,23 +259,6 @@ export default function PickSheetPage() {
                 }}
               >
                 {formatGameTime(game.gameTime)}
-                {game.isMondayNight && (
-                  <span
-                    style={{
-                      display: "block",
-                      fontSize: "9px",
-                      background: "#ffcc00",
-                      color: "#333",
-                      padding: "1px 4px",
-                      borderRadius: "2px",
-                      fontWeight: "bold",
-                      width: "fit-content",
-                      marginTop: "2px",
-                    }}
-                  >
-                    MNF
-                  </span>
-                )}
                 {locked && (
                   <span
                     style={{
@@ -404,44 +378,6 @@ export default function PickSheetPage() {
         })}
       </div>
 
-      {/* Monday Night Tiebreaker */}
-      {games.some((g) => g.isMondayNight) && (
-        <div
-          style={{
-            background: "#fff",
-            border: "1px solid #ccc",
-            borderTop: "none",
-            padding: "12px 16px",
-          }}
-        >
-          <label
-            style={{
-              fontSize: "12px",
-              fontWeight: "bold",
-              color: "#003366",
-            }}
-          >
-            Monday Night Tiebreaker &mdash; Total Combined Score:{" "}
-            <input
-              type="number"
-              value={tiebreaker}
-              onChange={(e) => setTiebreaker(e.target.value)}
-              style={{
-                width: "80px",
-                padding: "4px 8px",
-                border: "1px solid #999",
-                borderRadius: "2px",
-                fontSize: "14px",
-                marginLeft: "8px",
-              }}
-              min={0}
-              max={200}
-              placeholder="0"
-            />
-          </label>
-        </div>
-      )}
-
       {/* Submit */}
       <div
         style={{
@@ -462,7 +398,7 @@ export default function PickSheetPage() {
             <span
               style={{
                 fontSize: "12px",
-                color: message.includes("success") || message.includes("Draft saved") ? "#006600" : "#cc0000",
+                color: message.includes("success") ? "#006600" : "#cc0000",
                 fontWeight: "bold",
               }}
             >
@@ -472,23 +408,7 @@ export default function PickSheetPage() {
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
           <button
-            onClick={() => savePicks(true)}
-            disabled={saving}
-            style={{
-              padding: "10px 20px",
-              background: "#003366",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              fontSize: "13px",
-              fontWeight: "bold",
-              cursor: saving ? "wait" : "pointer",
-            }}
-          >
-            {saving ? "Saving..." : "SAVE DRAFT"}
-          </button>
-          <button
-            onClick={() => savePicks(false)}
+            onClick={() => submitPicks()}
             disabled={saving}
             style={{
               padding: "10px 30px",

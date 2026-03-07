@@ -10,7 +10,6 @@ interface Game {
   homeTeam: string;
   spread: number;
   gameTime: string;
-  isMondayNight: boolean;
   isFinal: boolean;
   awayScore: number | null;
   homeScore: number | null;
@@ -24,7 +23,7 @@ interface WeekOption {
 
 export default function AdminGamesPage() {
   const searchParams = useSearchParams();
-  const league = searchParams.get("league") || "NFL";
+  const league = searchParams.get("league") || "NCAAF";
   const weekId = searchParams.get("week") || "";
 
   const [games, setGames] = useState<Game[]>([]);
@@ -39,7 +38,6 @@ export default function AdminGamesPage() {
     homeTeam: "",
     spread: "0",
     gameTime: "",
-    isMondayNight: false,
   });
 
   // Edit state
@@ -49,7 +47,6 @@ export default function AdminGamesPage() {
     homeTeam: "",
     spread: "0",
     gameTime: "",
-    isMondayNight: false,
   });
 
   useEffect(() => {
@@ -97,7 +94,7 @@ export default function AdminGamesPage() {
 
     if (res.ok) {
       setMessage("Game added!");
-      setNewGame({ awayTeam: "", homeTeam: "", spread: "0", gameTime: "", isMondayNight: false });
+      setNewGame({ awayTeam: "", homeTeam: "", spread: "0", gameTime: "" });
       setShowForm(false);
       loadGames();
     } else {
@@ -148,7 +145,6 @@ export default function AdminGamesPage() {
       homeTeam: game.homeTeam,
       spread: String(game.spread),
       gameTime: toLocalDatetimeString(game.gameTime),
-      isMondayNight: game.isMondayNight,
     });
   }
 
@@ -218,7 +214,7 @@ export default function AdminGamesPage() {
             borderTop: "none",
             padding: "16px",
             display: "grid",
-            gridTemplateColumns: "1fr 1fr 100px 200px 80px auto",
+            gridTemplateColumns: "1fr 1fr 100px 200px auto",
             gap: "8px",
             alignItems: "end",
             fontSize: "12px",
@@ -264,14 +260,6 @@ export default function AdminGamesPage() {
               required
             />
           </div>
-          <div>
-            <label style={adminLabelStyle}>MNF</label>
-            <input
-              type="checkbox"
-              checked={newGame.isMondayNight}
-              onChange={(e) => setNewGame({ ...newGame, isMondayNight: e.target.checked })}
-            />
-          </div>
           <button
             type="submit"
             style={{
@@ -306,7 +294,6 @@ export default function AdminGamesPage() {
             <th style={thStyle}>Home</th>
             <th style={thStyle}>Spread</th>
             <th style={thStyle}>Game Time</th>
-            <th style={thStyle}>MNF</th>
             <th style={thStyle}>Status</th>
             <th style={thStyle}>Actions</th>
           </tr>
@@ -314,13 +301,13 @@ export default function AdminGamesPage() {
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={7} style={{ padding: "20px", textAlign: "center" }}>
+              <td colSpan={6} style={{ padding: "20px", textAlign: "center" }}>
                 Loading...
               </td>
             </tr>
           ) : games.length === 0 ? (
             <tr>
-              <td colSpan={7} style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+              <td colSpan={6} style={{ padding: "20px", textAlign: "center", color: "#666" }}>
                 No games for this week. Click &quot;+ ADD GAME&quot; to add games.
               </td>
             </tr>
@@ -361,13 +348,6 @@ export default function AdminGamesPage() {
                       style={adminInputStyle}
                     />
                   </td>
-                  <td style={{ ...tdStyle, textAlign: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={editData.isMondayNight}
-                      onChange={(e) => setEditData({ ...editData, isMondayNight: e.target.checked })}
-                    />
-                  </td>
                   <td style={tdStyle}>-</td>
                   <td style={tdStyle}>
                     <button
@@ -397,9 +377,6 @@ export default function AdminGamesPage() {
                   </td>
                   <td style={{ ...tdStyle, fontSize: "10px" }}>
                     {new Date(game.gameTime).toLocaleString()}
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: "center" }}>
-                    {game.isMondayNight ? "Yes" : "-"}
                   </td>
                   <td style={tdStyle}>
                     {game.isFinal ? (

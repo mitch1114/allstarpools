@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { Fragment, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface WeekScore {
@@ -32,32 +32,96 @@ interface WeekInfo {
   label: string;
 }
 
+type SortField = "weekly" | "ytd" | "bestWeek" | "worstWeek" | "pct";
+
 export default function StandingsPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const weekId = searchParams.get("week") || "";
 
   const [standings, setStandings] = useState<Standing[]>([]);
   const [weeks, setWeeks] = useState<WeekInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"combined" | "NFL" | "NCAAF">("combined");
+  const [viewMode, setViewMode] = useState<"combined" | "NCAAF" | "NFL">("combined");
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
+  const [selectedWeekId, setSelectedWeekId] = useState("");
+  const [sortField, setSortField] = useState<SortField>("weekly");
+  const [sortAsc, setSortAsc] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    const params = viewMode === "combined" ? "" : `?league=${viewMode}`;
-    fetch(`/api/standings${params}`)
+    const params = new URLSearchParams();
+    if (viewMode !== "combined") params.set("league", viewMode);
+    if (selectedWeekId) params.set("week", selectedWeekId);
+    const qs = params.toString();
+    fetch(`/api/standings${qs ? `?${qs}` : ""}`)
       .then((r) => r.json())
       .then((data) => {
         setStandings(data.standings || []);
         setWeeks(data.weeks || []);
         setLoading(false);
       });
-  }, [viewMode]);
+  }, [viewMode, selectedWeekId]);
+
+  useEffect(() => {
+    if (weekId && !selectedWeekId) {
+      setSelectedWeekId(weekId);
+    }
+  }, [weekId, selectedWeekId]);
+
+  function getWeeklyPoints(s: Standing): number {
+    if (!selectedWeekId) {
+      return s.weeklyScores.length > 0 ? s.weeklyScores[s.weeklyScores.length - 1].points : 0;
+    }
+    const ws = s.weeklyScores.find((w) => w.weekId === selectedWeekId);
+    return ws ? ws.points : 0;
+  }
+
+  function getYTD(s: Standing): number {
+    if (!selectedWeekId) return s.totalPoints;
+    const ws = s.weeklyScores.find((w) => w.weekId === selectedWeekId);
+    return ws ? ws.ytd : 0;
+  }
+
+  function handleSort(field: SortField) {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(false);
+    }
+  }
+
+  function getSortValue(s: Standing, field: SortField): number {
+    switch (field) {
+      case "weekly": return getWeeklyPoints(s);
+      case "ytd": return getYTD(s);
+      case "bestWeek": return s.bestWeek;
+      case "worstWeek": return s.worstWeek;
+      case "pct": return s.pct;
+    }
+  }
+
+  const sortedStandings = [...standings].sort((a, b) => {
+    const aVal = getSortValue(a, sortField);
+    const bVal = getSortValue(b, sortField);
+    return sortAsc ? aVal - bVal : bVal - aVal;
+  });
 
   function togglePlayer(playerId: string) {
     setExpandedPlayer(expandedPlayer === playerId ? null : playerId);
   }
+
+  const sortIndicator = (field: SortField) => {
+    if (sortField !== field) return "";
+    return sortAsc ? " \u25B2" : " \u25BC";
+  };
+
+  const sortableThStyle = (field: SortField): React.CSSProperties => ({
+    ...thStyle,
+    cursor: "pointer",
+    userSelect: "none",
+    background: sortField === field ? "#d8d8d0" : "#e8e8e0",
+  });
 
   return (
     <div style={{ fontFamily: "Verdana, Geneva, sans-serif" }}>
@@ -70,13 +134,15 @@ export default function StandingsPage() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: "wrap",
+          gap: "8px",
         }}
       >
         <h2 style={{ margin: 0, fontSize: "18px" }}>
           {viewMode === "combined" ? "Combined" : viewMode} Standings
         </h2>
         <div style={{ display: "flex", gap: "4px" }}>
-          {(["combined", "NFL", "NCAAF"] as const).map((mode) => (
+          {(["combined", "NCAAF", "NFL"] as const).map((mode) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
@@ -95,6 +161,42 @@ export default function StandingsPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Week selector */}
+      <div
+        style={{
+          background: "#f5f5f0",
+          border: "1px solid #ccc",
+          borderTop: "none",
+          padding: "8px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          fontSize: "12px",
+        }}
+      >
+        <label style={{ fontWeight: "bold", color: "#333" }}>Week:</label>
+        <select
+          value={selectedWeekId}
+          onChange={(e) => setSelectedWeekId(e.target.value)}
+          style={{
+            padding: "4px 8px",
+            border: "1px solid #999",
+            borderRadius: "2px",
+            fontSize: "12px",
+          }}
+        >
+          <option value="">Latest</option>
+          {weeks.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.label}
+            </option>
+          ))}
+        </select>
+        <span style={{ fontSize: "10px", color: "#888" }}>
+          Weekly points for selected week + cumulative YTD
+        </span>
       </div>
 
       {loading ? (
@@ -128,26 +230,32 @@ export default function StandingsPage() {
             <tr style={{ background: "#e8e8e0" }}>
               <th style={thStyle}>#</th>
               <th style={{ ...thStyle, textAlign: "left" }}>Player</th>
+              <th style={sortableThStyle("weekly")} onClick={() => handleSort("weekly")}>
+                Weekly{sortIndicator("weekly")}
+              </th>
+              <th style={sortableThStyle("ytd")} onClick={() => handleSort("ytd")}>
+                YTD{sortIndicator("ytd")}
+              </th>
+              <th style={sortableThStyle("bestWeek")} onClick={() => handleSort("bestWeek")}>
+                Best Potential{sortIndicator("bestWeek")}
+              </th>
+              <th style={sortableThStyle("worstWeek")} onClick={() => handleSort("worstWeek")}>
+                Worst Potential{sortIndicator("worstWeek")}
+              </th>
               <th style={thStyle}>W</th>
               <th style={thStyle}>L</th>
-              <th style={thStyle}>Pct</th>
-              <th style={thStyle}>Weekly</th>
-              <th style={thStyle}>YTD</th>
-              <th style={thStyle}>Best Wk</th>
-              <th style={thStyle}>Worst Wk</th>
+              <th style={sortableThStyle("pct")} onClick={() => handleSort("pct")}>
+                Pct{sortIndicator("pct")}
+              </th>
             </tr>
           </thead>
           <tbody>
-            {standings.map((s, idx) => {
-              const latestWeek = s.weeklyScores.length > 0
-                ? s.weeklyScores[s.weeklyScores.length - 1]
-                : null;
+            {sortedStandings.map((s, idx) => {
               const isExpanded = expandedPlayer === s.id;
 
               return (
-                <>
+                <Fragment key={s.id}>
                   <tr
-                    key={s.id}
                     onClick={() => togglePlayer(s.id)}
                     style={{
                       background:
@@ -172,7 +280,7 @@ export default function StandingsPage() {
                     </td>
                     <td style={{ ...tdStyle, fontWeight: "bold", color: "#003366" }}>
                       <Link
-                        href={`/all-picks?week=${weekId}&userId=${s.id}`}
+                        href={`/all-picks?week=${selectedWeekId || weekId}&userId=${s.id}`}
                         onClick={(e) => e.stopPropagation()}
                         style={{ color: "#003366", textDecoration: "underline" }}
                       >
@@ -181,6 +289,25 @@ export default function StandingsPage() {
                       <span style={{ fontSize: "9px", color: "#999", marginLeft: "4px" }}>
                         {isExpanded ? "\u25B2" : "\u25BC"}
                       </span>
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: "bold", color: "#333" }}>
+                      {getWeeklyPoints(s)}
+                    </td>
+                    <td
+                      style={{
+                        ...tdStyle,
+                        textAlign: "center",
+                        fontWeight: "bold",
+                        color: "#003366",
+                      }}
+                    >
+                      {getYTD(s)}
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: "center", color: "#006600" }}>
+                      {s.bestWeek}
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: "center", color: "#cc0000" }}>
+                      {s.worstWeek}
                     </td>
                     <td style={{ ...tdStyle, textAlign: "center", color: "#006600" }}>
                       {s.wins}
@@ -191,28 +318,9 @@ export default function StandingsPage() {
                     <td style={{ ...tdStyle, textAlign: "center", fontWeight: "bold" }}>
                       {s.pct.toFixed(3)}
                     </td>
-                    <td style={{ ...tdStyle, textAlign: "center", color: "#333" }}>
-                      {latestWeek ? latestWeek.points : "-"}
-                    </td>
-                    <td
-                      style={{
-                        ...tdStyle,
-                        textAlign: "center",
-                        fontWeight: "bold",
-                        color: "#003366",
-                      }}
-                    >
-                      {s.totalPoints}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center", color: "#006600" }}>
-                      {s.bestWeek}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center", color: "#cc0000" }}>
-                      {s.worstWeek}
-                    </td>
                   </tr>
                   {isExpanded && (
-                    <tr key={`${s.id}-detail`}>
+                    <tr>
                       <td colSpan={9} style={{ padding: "0", background: "#f8f8f4" }}>
                         <div style={{ padding: "8px 16px", overflowX: "auto" }}>
                           <div style={{ fontSize: "11px", fontWeight: "bold", color: "#003366", marginBottom: "6px" }}>
@@ -244,7 +352,7 @@ export default function StandingsPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
@@ -262,7 +370,7 @@ export default function StandingsPage() {
           color: "#999",
         }}
       >
-        Sorted by total points. Click a player name to view their picks, or click the row to expand weekly breakdown.
+        Click column headers to sort. Click a player name to view their picks, or click the row to expand weekly breakdown.
       </div>
     </div>
   );

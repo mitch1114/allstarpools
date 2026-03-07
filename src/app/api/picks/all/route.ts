@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const league = searchParams.get("league");
 
   if (!weekId) {
-    return NextResponse.json({ games: [], players: [] });
+    return NextResponse.json({ games: [] });
   }
 
   // Get games for this week/league
@@ -25,53 +25,42 @@ export async function GET(req: NextRequest) {
     orderBy: [{ gameTime: "asc" }],
   });
 
-  // Get all picks for this week
+  // Get all picks for this week's games
   const picks = await prisma.pick.findMany({
     where: {
       weekId,
       gameId: { in: games.map((g) => g.id) },
     },
-    include: {
-      user: { select: { id: true, name: true, playerCode: true } },
-    },
   });
 
-  // Group picks by user
-  const playerMap = new Map<
-    string,
-    {
-      id: string;
-      name: string;
-      playerCode: string;
-      picks: Record<string, { selection: string; isHotPick: boolean; points: number | null }>;
-    }
-  >();
-
-  for (const pick of picks) {
-    if (!playerMap.has(pick.userId)) {
-      playerMap.set(pick.userId, {
-        id: pick.user.id,
-        name: pick.user.name,
-        playerCode: pick.user.playerCode,
-        picks: {},
-      });
-    }
-    playerMap.get(pick.userId)!.picks[pick.gameId] = {
-      selection: pick.selection,
-      isHotPick: pick.isHotPick,
-      points: pick.points,
-    };
-  }
-
-  // Only show picks for games that have started
+  // Only show pick stats for games that have started
   const now = new Date();
-  const visibleGames = games.map((g) => ({
-    ...g,
-    picksVisible: new Date(g.gameTime) <= now || g.isFinal,
-  }));
 
-  return NextResponse.json({
-    games: visibleGames,
-    players: Array.from(playerMap.values()),
+  const gameStats = games.map((g) => {
+    const picksVisible = new Date(g.gameTime) <= now || g.isFinal;
+    const gamePicks = picks.filter((p) => p.gameId === g.id);
+
+    const awayPicks = picksVisible ? gamePicks.filter((p) => p.selection === "away").length : 0;
+    const homePicks = picksVisible ? gamePicks.filter((p) => p.selection === "home").length : 0;
+    const awayHotPicks = picksVisible ? gamePicks.filter((p) => p.selection === "away" && p.isHotPick).length : 0;
+    const homeHotPicks = picksVisible ? gamePicks.filter((p) => p.selection === "home" && p.isHotPick).length : 0;
+
+    return {
+      id: g.id,
+      awayTeam: g.awayTeam,
+      homeTeam: g.homeTeam,
+      spread: g.spread,
+      isFinal: g.isFinal,
+      awayScore: g.awayScore,
+      homeScore: g.homeScore,
+      picksVisible,
+      totalPicks: picksVisible ? gamePicks.length : 0,
+      awayPicks,
+      homePicks,
+      awayHotPicks,
+      homeHotPicks,
+    };
   });
+
+  return NextResponse.json({ games: gameStats });
 }

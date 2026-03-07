@@ -111,11 +111,6 @@ export default function RulesPage() {
             automatically lock each game from picking as soon as the start time
             hits. Make sure you get your picks in early!
           </li>
-          <li>
-            <strong>Monday Night Tiebreaker:</strong> Enter your predicted total
-            combined score for the Monday Night Football game. This is used to
-            break ties in the standings.
-          </li>
         </ul>
 
         <h3 style={{ color: "#003366", borderBottom: "1px solid #ddd", paddingBottom: "6px", marginTop: "20px" }}>
@@ -135,7 +130,7 @@ export default function RulesPage() {
             <tbody>
               <tr>
                 <td style={{ padding: "4px 8px", fontWeight: "bold" }}>Games Available:</td>
-                <td style={{ padding: "4px 8px" }}>14 per league (NFL + NCAAF)</td>
+                <td style={{ padding: "4px 8px" }}>14 per league (NCAAF + NFL)</td>
               </tr>
               <tr>
                 <td style={{ padding: "4px 8px", fontWeight: "bold" }}>Games to Pick:</td>
@@ -151,7 +146,7 @@ export default function RulesPage() {
               </tr>
               <tr>
                 <td style={{ padding: "4px 8px", fontWeight: "bold" }}>Total Weekly Picks:</td>
-                <td style={{ padding: "4px 8px" }}>20 (10 NFL + 10 NCAAF)</td>
+                <td style={{ padding: "4px 8px" }}>20 (10 NCAAF + 10 NFL)</td>
               </tr>
               <tr>
                 <td style={{ padding: "4px 8px", fontWeight: "bold" }}>Max Possible Points:</td>

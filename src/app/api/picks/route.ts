@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const { picks, tiebreaker } = await req.json();
+  const { picks } = await req.json();
 
   if (!Array.isArray(picks)) {
     return NextResponse.json({ error: "Invalid picks data" }, { status: 400 });
@@ -72,7 +72,6 @@ export async function POST(req: NextRequest) {
       update: {
         selection,
         isHotPick: !!isHotPick,
-        tiebreaker: game.isMondayNight && tiebreaker != null ? Number(tiebreaker) : undefined,
       },
       create: {
         userId: session.user.id,
@@ -80,7 +79,6 @@ export async function POST(req: NextRequest) {
         gameId,
         selection,
         isHotPick: !!isHotPick,
-        tiebreaker: game.isMondayNight && tiebreaker != null ? Number(tiebreaker) : null,
       },
     });
 

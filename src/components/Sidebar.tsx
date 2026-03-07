@@ -18,7 +18,7 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const [weeks, setWeeks] = useState<WeekOption[]>([]);
   const [selectedLeague, setSelectedLeague] = useState(
-    searchParams.get("league") || "NFL"
+    searchParams.get("league") || "NCAAF"
   );
   const [selectedWeek, setSelectedWeek] = useState(
     searchParams.get("week") || ""
@@ -61,9 +61,9 @@ export default function Sidebar() {
 
   const navItems = [
     { href: "/dashboard", label: "Home" },
-    { href: "/picks", label: "Pick Sheet" },
+    { href: "/picks", label: "Make Picks" },
     { href: "/my-picks", label: "My Picks" },
-    { href: "/all-picks", label: "All Picks" },
+    { href: "/all-picks", label: "Everyone's Picks" },
     { href: "/standings", label: "Standings" },
     { href: "/history", label: "History" },
     { href: "/rules", label: "Rules" },
@@ -131,7 +131,7 @@ export default function Sidebar() {
           League
         </div>
         <div style={{ display: "flex", gap: "4px" }}>
-          {["NFL", "NCAAF"].map((league) => (
+          {["NCAAF", "NFL"].map((league) => (
             <button
               key={league}
               onClick={() => handleLeagueChange(league)}
@@ -233,6 +233,35 @@ export default function Sidebar() {
             >
               Admin
             </div>
+            {selectedWeek && (
+              <button
+                onClick={async () => {
+                  const res = await fetch("/api/admin/weeks", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ weekId: selectedWeek }),
+                  });
+                  if (res.ok) {
+                    alert("Default week updated!");
+                  }
+                }}
+                style={{
+                  display: "block",
+                  width: "calc(100% - 32px)",
+                  margin: "4px 16px",
+                  padding: "6px 8px",
+                  background: "transparent",
+                  color: "#ddaa44",
+                  border: "1px solid #ddaa44",
+                  borderRadius: "2px",
+                  fontSize: "10px",
+                  cursor: "pointer",
+                  textAlign: "center",
+                }}
+              >
+                Set Current Week as Default
+              </button>
+            )}
             {[
               { href: "/admin/games", label: "Manage Games" },
               { href: "/admin/scores", label: "Enter Scores" },

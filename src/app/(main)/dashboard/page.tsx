@@ -45,7 +45,7 @@ export default function DashboardPage() {
           &#9733; ALL STAR POOLS &#9733;
         </h1>
         <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#88bbee" }}>
-          NFL &amp; NCAAF Spread Pool
+          NCAAF &amp; NFL Spread Pool
         </p>
       </div>
 
@@ -164,8 +164,8 @@ export default function DashboardPage() {
               <strong style={{ color: "#666600" }}>Quick Reminders:</strong>
               <ul style={{ margin: "8px 0 0", paddingLeft: "20px" }}>
                 <li>Games/Spreads are typically posted Tuesday nights</li>
-                <li>Pick 10 NFL games and 10 NCAAF games each week (7 regular + 3 Hot Picks each)</li>
-                <li>Picks lock at game time &mdash; don&apos;t forget the Monday Night tiebreaker!</li>
+                <li>Pick NCAAF and NFL games each week, marking your Hot Picks (2x points)</li>
+                <li>Picks lock at game time &mdash; get your picks in early!</li>
                 <li>Hot Picks are worth 2 points if correct, -1 if wrong</li>
                 <li>Check the Rules page for full scoring details</li>
               </ul>

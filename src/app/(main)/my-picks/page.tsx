@@ -26,7 +26,7 @@ interface GameWithPick {
 
 export default function MyPicksPage() {
   const searchParams = useSearchParams();
-  const league = searchParams.get("league") || "NFL";
+  const league = searchParams.get("league") || "NCAAF";
   const weekId = searchParams.get("week") || "";
   const [picks, setPicks] = useState<GameWithPick[]>([]);
   const [loading, setLoading] = useState(true);

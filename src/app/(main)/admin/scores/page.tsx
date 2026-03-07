@@ -18,7 +18,7 @@ interface Game {
 
 export default function AdminScoresPage() {
   const searchParams = useSearchParams();
-  const league = searchParams.get("league") || "NFL";
+  const league = searchParams.get("league") || "NCAAF";
   const weekId = searchParams.get("week") || "";
 
   const [games, setGames] = useState<Game[]>([]);
