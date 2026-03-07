@@ -199,7 +199,7 @@ export default function MyPicksPage() {
               marginTop: "2px",
             }}
           >
-            ★ Hot Picks ({hotPicks.length})
+            🔥 Hot Picks ({hotPicks.length})
           </div>
           <table style={tableStyle}>
             <thead>

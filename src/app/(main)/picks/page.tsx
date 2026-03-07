@@ -194,7 +194,7 @@ export default function PickSheetPage() {
           color: "#666600",
         }}
       >
-        Click a team to pick them. Click the star to mark as a Hot Pick (2x points).
+        Click a team to pick them. Click the 🔥 to mark as a Hot Pick (2x points).
         You can submit any number of picks at a time.
       </div>
 
@@ -371,7 +371,7 @@ export default function PickSheetPage() {
                   transition: "all 0.15s",
                 }}
               >
-                {isHot ? "\u2605" : "\u2606"}
+                {isHot ? "🔥" : "🔥"}
               </button>
             </div>
           );

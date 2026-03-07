@@ -85,7 +85,7 @@ export default function RulesPage() {
             </tr>
             <tr style={{ background: "#fffff0" }}>
               <td style={ruleTdStyle}>
-                <strong>★ Hot Pick (HP)</strong>
+                <strong>🔥 Hot Pick (HP)</strong>
               </td>
               <td style={{ ...ruleTdStyle, color: "#006600", fontWeight: "bold" }}>
                 +2 points
