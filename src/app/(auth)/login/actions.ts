@@ -1,6 +1,7 @@
+"use server";
+
 import { prisma } from "@/lib/db";
 import { hashSync } from "bcryptjs";
-import { NextResponse } from "next/server";
 
 const nflMatchups = [
   [
@@ -148,33 +149,11 @@ const ncaafMatchups = [
   ],
 ];
 
-// Also support POST to bypass Vercel deployment protection on GET
-export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({}));
-  const key = body?.key;
-  if (key !== "allstarpools2026") {
-    return NextResponse.json({ error: "Invalid key" }, { status: 401 });
-  }
-  return seedDatabase();
-}
-
-export async function GET(request: Request) {
-  // Simple secret check to prevent random people from seeding
-  const { searchParams } = new URL(request.url);
-  const key = searchParams.get("key");
-  if (key !== "allstarpools2026") {
-    return NextResponse.json({ error: "Invalid key" }, { status: 401 });
-  }
-  return seedDatabase();
-}
-
-async function seedDatabase() {
-
+export async function checkAndSeedDatabase(): Promise<{ seeded: boolean; message: string }> {
   try {
-    // Check if already seeded
-    const existingUsers = await prisma.user.count();
-    if (existingUsers > 0) {
-      return NextResponse.json({ message: "Database already seeded", users: existingUsers });
+    const userCount = await prisma.user.count();
+    if (userCount > 0) {
+      return { seeded: false, message: "Database already has data" };
     }
 
     // Create admin user
@@ -209,7 +188,6 @@ async function seedDatabase() {
       const startDate = new Date(2026, 8, 3 + (i - 1) * 7);
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 4);
-
       await prisma.week.create({
         data: {
           number: i,
@@ -233,19 +211,15 @@ async function seedDatabase() {
       const sat = new Date(baseDate);
       sat.setDate(sat.getDate() + 2);
       sat.setUTCHours(16, 0, 0, 0);
-
       const sun1 = new Date(baseDate);
       sun1.setDate(sun1.getDate() + 3);
       sun1.setUTCHours(17, 0, 0, 0);
-
       const sun4 = new Date(baseDate);
       sun4.setDate(sun4.getDate() + 3);
       sun4.setUTCHours(20, 25, 0, 0);
-
       const snf = new Date(baseDate);
       snf.setDate(snf.getDate() + 4);
       snf.setUTCHours(0, 20, 0, 0);
-
       const mnf = new Date(baseDate);
       mnf.setDate(mnf.getDate() + 5);
       mnf.setUTCHours(0, 15, 0, 0);
@@ -258,17 +232,11 @@ async function seedDatabase() {
         if (i === nfl.length - 1) { time = mnf; isMnf = true; }
         else if (i === nfl.length - 2) { time = snf; }
         else if (i >= 8) { time = sun4; }
-
         await prisma.game.create({
           data: {
-            seasonId: season.id,
-            weekId: week.id,
-            league: "NFL",
-            awayTeam: g.away,
-            homeTeam: g.home,
-            spread: g.spread,
-            gameTime: time,
-            isMondayNight: isMnf,
+            seasonId: season.id, weekId: week.id, league: "NFL",
+            awayTeam: g.away, homeTeam: g.home, spread: g.spread,
+            gameTime: time, isMondayNight: isMnf,
           },
         });
       }
@@ -277,14 +245,9 @@ async function seedDatabase() {
       for (const g of ncaaf) {
         await prisma.game.create({
           data: {
-            seasonId: season.id,
-            weekId: week.id,
-            league: "NCAAF",
-            awayTeam: g.away,
-            homeTeam: g.home,
-            spread: g.spread,
-            gameTime: sat,
-            isMondayNight: false,
+            seasonId: season.id, weekId: week.id, league: "NCAAF",
+            awayTeam: g.away, homeTeam: g.home, spread: g.spread,
+            gameTime: sat, isMondayNight: false,
           },
         });
       }
@@ -303,11 +266,8 @@ async function seedDatabase() {
     for (const fp of fakePlayers) {
       const user = await prisma.user.create({
         data: {
-          playerCode: fp.code,
-          name: fp.name,
-          email: fp.email,
-          password: hashSync("test123", 10),
-          isAdmin: false,
+          playerCode: fp.code, name: fp.name, email: fp.email,
+          password: hashSync("test123", 10), isAdmin: false,
         },
       });
       playerIds.push(user.id);
@@ -344,22 +304,17 @@ async function seedDatabase() {
           const game = nflGamesDb[i];
           await prisma.pick.create({
             data: {
-              userId,
-              weekId: week.id,
-              gameId: game.id,
+              userId, weekId: week.id, gameId: game.id,
               selection: Math.random() > 0.5 ? "home" : "away",
               isHotPick: i < 3,
             },
           });
         }
-
         for (let i = 0; i < Math.min(10, ncaafGamesDb.length); i++) {
           const game = ncaafGamesDb[i];
           await prisma.pick.create({
             data: {
-              userId,
-              weekId: week.id,
-              gameId: game.id,
+              userId, weekId: week.id, gameId: game.id,
               selection: Math.random() > 0.5 ? "home" : "away",
               isHotPick: i < 3,
             },
@@ -371,20 +326,16 @@ async function seedDatabase() {
       const scoredGames = await prisma.game.findMany({
         where: { weekId: week.id, isFinal: true },
       });
-
       for (const game of scoredGames) {
         const picks = await prisma.pick.findMany({
           where: { gameId: game.id, points: null },
         });
-
         for (const pick of picks) {
           const aScore = game.awayScore!;
           const hScore = game.homeScore!;
           const adjustedHomeScore = hScore + game.spread;
-
           let isCorrect: boolean;
           let isPush: boolean;
-
           if (pick.selection === "home") {
             isPush = adjustedHomeScore === aScore;
             isCorrect = adjustedHomeScore > aScore;
@@ -392,16 +343,10 @@ async function seedDatabase() {
             isPush = aScore === adjustedHomeScore;
             isCorrect = aScore > adjustedHomeScore;
           }
-
           let points: number;
-          if (isPush) {
-            points = pick.isHotPick ? -1 : 0;
-          } else if (isCorrect) {
-            points = pick.isHotPick ? 2 : 1;
-          } else {
-            points = pick.isHotPick ? -1 : 0;
-          }
-
+          if (isPush) { points = pick.isHotPick ? -1 : 0; }
+          else if (isCorrect) { points = pick.isHotPick ? 2 : 1; }
+          else { points = pick.isHotPick ? -1 : 0; }
           await prisma.pick.update({
             where: { id: pick.id },
             data: { points },
@@ -410,16 +355,9 @@ async function seedDatabase() {
       }
     }
 
-    return NextResponse.json({
-      message: "Database seeded successfully!",
-      admin: "admin / admin123",
-      demo: "demo / demo123",
-    });
+    return { seeded: true, message: "Database seeded successfully!" };
   } catch (error) {
-    console.error("Seed error:", error);
-    return NextResponse.json(
-      { error: "Seed failed", details: String(error) },
-      { status: 500 }
-    );
+    console.error("Auto-seed error:", error);
+    return { seeded: false, message: `Seed failed: ${String(error)}` };
   }
 }

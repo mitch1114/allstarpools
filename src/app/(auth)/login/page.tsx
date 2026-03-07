@@ -1,16 +1,26 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { checkAndSeedDatabase } from "./actions";
 
 export default function LoginPage() {
   const [playerCode, setPlayerCode] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [seedStatus, setSeedStatus] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    checkAndSeedDatabase().then((result) => {
+      if (result.seeded) {
+        setSeedStatus("Database initialized! You can now log in.");
+      }
+    });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,6 +86,12 @@ export default function LoginPage() {
         >
           NFL &amp; NCAAF Spread Pool
         </p>
+
+        {seedStatus && (
+          <p style={{ color: "#006600", fontSize: "12px", marginBottom: "12px", background: "#e6ffe6", padding: "8px", borderRadius: "4px" }}>
+            {seedStatus}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "12px", textAlign: "left" }}>
