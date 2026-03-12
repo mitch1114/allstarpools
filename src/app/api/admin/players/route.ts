@@ -14,6 +14,8 @@ export async function GET() {
       name: true,
       email: true,
       isAdmin: true,
+      hasPaid: true,
+      referral: true,
       createdAt: true,
       _count: { select: { picks: true } },
     },
@@ -28,7 +30,7 @@ export async function PUT(req: NextRequest) {
   if (error) return NextResponse.json({ error }, { status });
 
   const body = await req.json();
-  const { id, name, isAdmin, resetPassword } = body;
+  const { id, name, isAdmin, resetPassword, hasPaid, referral } = body;
 
   if (!id) {
     return NextResponse.json({ error: "Player ID required" }, { status: 400 });
@@ -37,6 +39,8 @@ export async function PUT(req: NextRequest) {
   const updateData: Record<string, unknown> = {};
   if (name !== undefined) updateData.name = name;
   if (isAdmin !== undefined) updateData.isAdmin = isAdmin;
+  if (hasPaid !== undefined) updateData.hasPaid = hasPaid;
+  if (referral !== undefined) updateData.referral = referral;
   if (resetPassword) {
     updateData.password = hashSync(resetPassword, 10);
   }
@@ -44,7 +48,7 @@ export async function PUT(req: NextRequest) {
   const player = await prisma.user.update({
     where: { id },
     data: updateData,
-    select: { id: true, name: true, playerCode: true, isAdmin: true },
+    select: { id: true, name: true, playerCode: true, isAdmin: true, hasPaid: true, referral: true },
   });
 
   return NextResponse.json({ player });

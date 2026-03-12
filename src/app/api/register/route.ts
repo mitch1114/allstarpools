@@ -3,7 +3,7 @@ import { hashSync } from "bcryptjs";
 import { prisma } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
-  const { name, email, playerCode, password } = await req.json();
+  const { name, email, playerCode, password, referral } = await req.json();
 
   if (!name || !email || !playerCode || !password) {
     return NextResponse.json(
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       email,
       playerCode,
       password: hashed,
+      referral: referral || "",
     },
   });
 

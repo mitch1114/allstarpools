@@ -20,10 +20,11 @@ interface Standing {
   ties: number;
   pct: number;
   totalPoints: number;
-  bestWeek: number;
-  worstWeek: number;
+  bestPotential: number;
+  worstPotential: number;
   gamesPlayed: number;
   weeklyScores: WeekScore[];
+  totalCash: number;
 }
 
 interface WeekInfo {
@@ -32,7 +33,7 @@ interface WeekInfo {
   label: string;
 }
 
-type SortField = "weekly" | "ytd" | "bestWeek" | "worstWeek" | "pct";
+type SortField = "weekly" | "ytd" | "bestPotential" | "worstPotential" | "pct" | "totalCash";
 
 export default function StandingsPage() {
   const searchParams = useSearchParams();
@@ -95,9 +96,10 @@ export default function StandingsPage() {
     switch (field) {
       case "weekly": return getWeeklyPoints(s);
       case "ytd": return getYTD(s);
-      case "bestWeek": return s.bestWeek;
-      case "worstWeek": return s.worstWeek;
+      case "bestPotential": return s.bestPotential;
+      case "worstPotential": return s.worstPotential;
       case "pct": return s.pct;
+      case "totalCash": return s.totalCash;
     }
   }
 
@@ -217,146 +219,155 @@ export default function StandingsPage() {
           No standings data available yet.
         </div>
       ) : (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            background: "#fff",
-            border: "1px solid #ccc",
-            fontSize: "12px",
-          }}
-        >
-          <thead>
-            <tr style={{ background: "#e8e8e0" }}>
-              <th style={thStyle}>#</th>
-              <th style={{ ...thStyle, textAlign: "left" }}>Player</th>
-              <th style={sortableThStyle("weekly")} onClick={() => handleSort("weekly")}>
-                Weekly{sortIndicator("weekly")}
-              </th>
-              <th style={sortableThStyle("ytd")} onClick={() => handleSort("ytd")}>
-                YTD{sortIndicator("ytd")}
-              </th>
-              <th style={sortableThStyle("bestWeek")} onClick={() => handleSort("bestWeek")}>
-                Best Potential{sortIndicator("bestWeek")}
-              </th>
-              <th style={sortableThStyle("worstWeek")} onClick={() => handleSort("worstWeek")}>
-                Worst Potential{sortIndicator("worstWeek")}
-              </th>
-              <th style={thStyle}>W</th>
-              <th style={thStyle}>L</th>
-              <th style={sortableThStyle("pct")} onClick={() => handleSort("pct")}>
-                Pct{sortIndicator("pct")}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedStandings.map((s, idx) => {
-              const isExpanded = expandedPlayer === s.id;
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              background: "#fff",
+              border: "1px solid #ccc",
+              fontSize: "12px",
+              minWidth: "750px",
+            }}
+          >
+            <thead>
+              <tr style={{ background: "#e8e8e0" }}>
+                <th style={thStyle}>#</th>
+                <th style={{ ...thStyle, textAlign: "left" }}>Player</th>
+                <th style={sortableThStyle("weekly")} onClick={() => handleSort("weekly")}>
+                  Weekly{sortIndicator("weekly")}
+                </th>
+                <th style={sortableThStyle("ytd")} onClick={() => handleSort("ytd")}>
+                  YTD{sortIndicator("ytd")}
+                </th>
+                <th style={sortableThStyle("bestPotential")} onClick={() => handleSort("bestPotential")}>
+                  Best Pot.{sortIndicator("bestPotential")}
+                </th>
+                <th style={sortableThStyle("worstPotential")} onClick={() => handleSort("worstPotential")}>
+                  Worst Pot.{sortIndicator("worstPotential")}
+                </th>
+                <th style={thStyle}>W</th>
+                <th style={thStyle}>L</th>
+                <th style={sortableThStyle("pct")} onClick={() => handleSort("pct")}>
+                  Pct{sortIndicator("pct")}
+                </th>
+                <th style={sortableThStyle("totalCash")} onClick={() => handleSort("totalCash")}>
+                  Total Cash{sortIndicator("totalCash")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedStandings.map((s, idx) => {
+                const isExpanded = expandedPlayer === s.id;
 
-              return (
-                <Fragment key={s.id}>
-                  <tr
-                    onClick={() => togglePlayer(s.id)}
-                    style={{
-                      background:
-                        idx === 0
-                          ? "#fffff0"
-                          : idx % 2 === 0
-                            ? "#fff"
-                            : "#fafaf5",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <td
+                return (
+                  <Fragment key={s.id}>
+                    <tr
+                      onClick={() => togglePlayer(s.id)}
                       style={{
-                        ...tdStyle,
-                        textAlign: "center",
-                        fontWeight: "bold",
-                        color: idx === 0 ? "#cc8800" : "#666",
+                        background:
+                          idx === 0
+                            ? "#fffff0"
+                            : idx % 2 === 0
+                              ? "#fff"
+                              : "#fafaf5",
+                        cursor: "pointer",
                       }}
                     >
-                      {idx + 1}
-                      {idx === 0 && " \u2605"}
-                    </td>
-                    <td style={{ ...tdStyle, fontWeight: "bold", color: "#003366" }}>
-                      <Link
-                        href={`/all-picks?week=${selectedWeekId || weekId}&userId=${s.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ color: "#003366", textDecoration: "underline" }}
+                      <td
+                        style={{
+                          ...tdStyle,
+                          textAlign: "center",
+                          fontWeight: "bold",
+                          color: idx === 0 ? "#cc8800" : "#666",
+                        }}
                       >
-                        {s.name}
-                      </Link>
-                      <span style={{ fontSize: "9px", color: "#999", marginLeft: "4px" }}>
-                        {isExpanded ? "\u25B2" : "\u25BC"}
-                      </span>
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: "bold", color: "#333" }}>
-                      {getWeeklyPoints(s)}
-                    </td>
-                    <td
-                      style={{
-                        ...tdStyle,
-                        textAlign: "center",
-                        fontWeight: "bold",
-                        color: "#003366",
-                      }}
-                    >
-                      {getYTD(s)}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center", color: "#006600" }}>
-                      {s.bestWeek}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center", color: "#cc0000" }}>
-                      {s.worstWeek}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center", color: "#006600" }}>
-                      {s.wins}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center", color: "#cc0000" }}>
-                      {s.losses}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center", fontWeight: "bold" }}>
-                      {s.pct.toFixed(3)}
-                    </td>
-                  </tr>
-                  {isExpanded && (
-                    <tr>
-                      <td colSpan={9} style={{ padding: "0", background: "#f8f8f4" }}>
-                        <div style={{ padding: "8px 16px", overflowX: "auto" }}>
-                          <div style={{ fontSize: "11px", fontWeight: "bold", color: "#003366", marginBottom: "6px" }}>
-                            {s.name} — Week-by-Week
-                          </div>
-                          <table style={{ borderCollapse: "collapse", fontSize: "11px", width: "100%" }}>
-                            <thead>
-                              <tr>
-                                <th style={innerThStyle}>Week</th>
-                                <th style={innerThStyle}>Points</th>
-                                <th style={innerThStyle}>YTD</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {s.weeklyScores.map((ws) => (
-                                <tr key={ws.weekId}>
-                                  <td style={innerTdStyle}>Wk {ws.weekNumber}</td>
-                                  <td style={{ ...innerTdStyle, textAlign: "center", color: ws.points >= 0 ? "#006600" : "#cc0000", fontWeight: "bold" }}>
-                                    {ws.points}
-                                  </td>
-                                  <td style={{ ...innerTdStyle, textAlign: "center", fontWeight: "bold" }}>
-                                    {ws.ytd}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                        {idx + 1}
+                        {idx === 0 && " \u2605"}
+                      </td>
+                      <td style={{ ...tdStyle, fontWeight: "bold", color: "#003366" }}>
+                        <Link
+                          href={`/player-picks/${s.id}?week=${selectedWeekId || weekId}`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ color: "#003366", textDecoration: "underline" }}
+                        >
+                          {s.name}
+                        </Link>
+                        <span style={{ fontSize: "9px", color: "#999", marginLeft: "4px" }}>
+                          {isExpanded ? "\u25B2" : "\u25BC"}
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center", fontWeight: "bold", color: "#333" }}>
+                        {getWeeklyPoints(s)}
+                      </td>
+                      <td
+                        style={{
+                          ...tdStyle,
+                          textAlign: "center",
+                          fontWeight: "bold",
+                          color: "#003366",
+                        }}
+                      >
+                        {getYTD(s)}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center", color: "#006600" }}>
+                        {s.bestPotential}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center", color: "#cc0000" }}>
+                        {s.worstPotential}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center", color: "#006600" }}>
+                        {s.wins}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center", color: "#cc0000" }}>
+                        {s.losses}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center", fontWeight: "bold" }}>
+                        {s.pct.toFixed(3)}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center", color: s.totalCash > 0 ? "#006600" : "#999", fontWeight: s.totalCash > 0 ? "bold" : "normal" }}>
+                        {s.totalCash > 0 ? `$${s.totalCash.toFixed(0)}` : "-"}
                       </td>
                     </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={10} style={{ padding: "0", background: "#f8f8f4" }}>
+                          <div style={{ padding: "8px 16px", overflowX: "auto" }}>
+                            <div style={{ fontSize: "11px", fontWeight: "bold", color: "#003366", marginBottom: "6px" }}>
+                              {s.name} — Week-by-Week
+                            </div>
+                            <table style={{ borderCollapse: "collapse", fontSize: "11px", width: "100%" }}>
+                              <thead>
+                                <tr>
+                                  <th style={innerThStyle}>Week</th>
+                                  <th style={{ ...innerThStyle, textAlign: "center" }}>Points</th>
+                                  <th style={{ ...innerThStyle, textAlign: "center" }}>YTD</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {s.weeklyScores.map((ws) => (
+                                  <tr key={ws.weekId}>
+                                    <td style={innerTdStyle}>Wk {ws.weekNumber}</td>
+                                    <td style={{ ...innerTdStyle, textAlign: "center", color: ws.points >= 0 ? "#006600" : "#cc0000", fontWeight: "bold" }}>
+                                      {ws.points}
+                                    </td>
+                                    <td style={{ ...innerTdStyle, textAlign: "center", fontWeight: "bold" }}>
+                                      {ws.ytd}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <div

@@ -10,6 +10,7 @@ export default function RegisterPage() {
   const [playerCode, setPlayerCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [referral, setReferral] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function RegisterPage() {
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, playerCode, password }),
+      body: JSON.stringify({ name, email, playerCode, password, referral }),
     });
 
     const data = await res.json();
@@ -228,6 +229,34 @@ export default function RegisterPage() {
                 boxSizing: "border-box",
               }}
               required
+            />
+          </div>
+
+          <div style={{ marginBottom: "16px", textAlign: "left" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "12px",
+                fontWeight: "bold",
+                color: "#333",
+                marginBottom: "4px",
+              }}
+            >
+              Who Referred You? (optional):
+            </label>
+            <input
+              type="text"
+              value={referral}
+              onChange={(e) => setReferral(e.target.value)}
+              placeholder="Enter name of person who referred you"
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #999",
+                borderRadius: "2px",
+                fontSize: "14px",
+                boxSizing: "border-box",
+              }}
             />
           </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 
 interface Game {
@@ -27,7 +27,7 @@ export default function PickSheetPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [pickStates, setPickStates] = useState<Record<string, PickState>>({});
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [popup, setPopup] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
     if (!weekId) return;
@@ -81,7 +81,7 @@ export default function PickSheetPage() {
       ).length;
 
       if (!current.isHotPick && hotPickCount >= 3) {
-        setMessage("You can only have 3 Hot Picks per league per week.");
+        showPopup("You can only have 3 Hot Picks per league per week.", "error");
         return prev;
       }
 
@@ -95,32 +95,54 @@ export default function PickSheetPage() {
     });
   }
 
+  const showPopup = useCallback((message: string, type: "success" | "error") => {
+    setPopup({ message, type });
+    setTimeout(() => setPopup(null), 5000);
+  }, []);
+
   async function submitPicks() {
     const selectedPicks = Object.values(pickStates).filter((p) => p.selection);
 
     if (selectedPicks.length === 0) {
-      setMessage("No picks to save.");
+      showPopup("No picks to save.", "error");
       return;
     }
 
     setSaving(true);
-    setMessage("");
 
-    const res = await fetch("/api/picks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        picks: selectedPicks,
-      }),
-    });
+    try {
+      const res = await fetch("/api/picks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          picks: selectedPicks,
+        }),
+      });
 
-    const data = await res.json();
-    setSaving(false);
+      const data = await res.json();
 
-    if (data.errors?.length) {
-      setMessage(`Saved ${data.saved} picks. Errors: ${data.errors.join("; ")}`);
-    } else {
-      setMessage(`${data.saved} pick(s) saved successfully!`);
+      // Calculate remaining
+      const unlockedGames = games.filter((g) => !isLocked(g));
+      const pickedGameIds = new Set(Object.keys(pickStates).filter((id) => pickStates[id]?.selection));
+      const unpickedCount = unlockedGames.filter((g) => !pickedGameIds.has(g.id)).length;
+      const currentHotPicks = Object.values(pickStates).filter((p) => p.isHotPick).length;
+      const remainingHotPicks = 3 - currentHotPicks;
+
+      if (data.errors?.length) {
+        showPopup(`Saved ${data.saved} picks. Errors: ${data.errors.join("; ")}`, "error");
+      } else {
+        const remainingMsg = unpickedCount > 0
+          ? `\n${unpickedCount} regular pick${unpickedCount !== 1 ? "s" : ""} remaining`
+          : "\nAll games picked!";
+        const hotMsg = remainingHotPicks > 0
+          ? ` | ${remainingHotPicks} hot pick${remainingHotPicks !== 1 ? "s" : ""} remaining`
+          : "";
+        showPopup(`${data.saved} pick(s) saved successfully!${remainingMsg}${hotMsg}`, "success");
+      }
+    } catch {
+      showPopup("Network error saving picks. Please try again.", "error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -129,7 +151,6 @@ export default function PickSheetPage() {
     if (side === "home") {
       return game.spread < 0 ? `(${game.spread})` : `(+${game.spread})`;
     }
-    // away
     return game.spread > 0 ? `(-${game.spread})` : `(+${Math.abs(game.spread)})`;
   }
 
@@ -157,7 +178,34 @@ export default function PickSheetPage() {
   }
 
   return (
-    <div style={{ fontFamily: "Verdana, Geneva, sans-serif" }}>
+    <div style={{ fontFamily: "Verdana, Geneva, sans-serif", position: "relative" }}>
+      {/* Popup notification */}
+      {popup && (
+        <div
+          style={{
+            position: "fixed",
+            top: "20px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: popup.type === "success" ? "#006600" : "#cc0000",
+            color: "#fff",
+            padding: "14px 24px",
+            borderRadius: "6px",
+            fontSize: "13px",
+            fontWeight: "bold",
+            zIndex: 9999,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            whiteSpace: "pre-line",
+            textAlign: "center",
+            maxWidth: "90vw",
+            cursor: "pointer",
+          }}
+          onClick={() => setPopup(null)}
+        >
+          {popup.message}
+        </div>
+      )}
+
       {/* Header */}
       <div
         style={{
@@ -387,43 +435,26 @@ export default function PickSheetPage() {
           padding: "12px 16px",
           borderRadius: "0 0 4px 4px",
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           alignItems: "center",
-          flexWrap: "wrap",
-          gap: "8px",
         }}
       >
-        <div style={{ flex: 1, minWidth: "200px" }}>
-          {message && (
-            <span
-              style={{
-                fontSize: "12px",
-                color: message.includes("success") ? "#006600" : "#cc0000",
-                fontWeight: "bold",
-              }}
-            >
-              {message}
-            </span>
-          )}
-        </div>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button
-            onClick={() => submitPicks()}
-            disabled={saving}
-            style={{
-              padding: "10px 30px",
-              background: "#006600",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              fontSize: "14px",
-              fontWeight: "bold",
-              cursor: saving ? "wait" : "pointer",
-            }}
-          >
-            {saving ? "Saving..." : "SUBMIT PICKS"}
-          </button>
-        </div>
+        <button
+          onClick={() => submitPicks()}
+          disabled={saving}
+          style={{
+            padding: "10px 30px",
+            background: "#006600",
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+            fontSize: "14px",
+            fontWeight: "bold",
+            cursor: saving ? "wait" : "pointer",
+          }}
+        >
+          {saving ? "Saving..." : "SUBMIT PICKS"}
+        </button>
       </div>
     </div>
   );

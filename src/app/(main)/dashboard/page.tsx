@@ -13,6 +13,8 @@ interface UserSummary {
   totalPoints: number;
   wins: number;
   losses: number;
+  hotPickWins: number;
+  hotPickLosses: number;
   rank: number;
   totalPlayers: number;
   weeklyScores: WeekSummary[];
@@ -102,6 +104,14 @@ export default function DashboardPage() {
                   <span style={{ color: "#cc0000" }}>{summary.losses}L</span>
                 </div>
               </div>
+              <div style={statBoxStyle}>
+                <div style={statLabelStyle}>Hot Pick Record</div>
+                <div style={statValueStyle}>
+                  <span style={{ color: "#006600" }}>{summary.hotPickWins}W</span>
+                  {" - "}
+                  <span style={{ color: "#cc0000" }}>{summary.hotPickLosses}L</span>
+                </div>
+              </div>
             </div>
 
             {/* Week-by-Week Table */}
@@ -112,8 +122,8 @@ export default function DashboardPage() {
               <thead>
                 <tr style={{ background: "#e8e8e0" }}>
                   <th style={innerThStyle}>Week</th>
-                  <th style={innerThStyle}>Points</th>
-                  <th style={innerThStyle}>YTD</th>
+                  <th style={{ ...innerThStyle, textAlign: "center" }}>Points</th>
+                  <th style={{ ...innerThStyle, textAlign: "center" }}>YTD</th>
                 </tr>
               </thead>
               <tbody>

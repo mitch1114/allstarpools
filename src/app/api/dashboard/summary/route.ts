@@ -45,6 +45,8 @@ export async function GET() {
   let wins = 0;
   let losses = 0;
   let totalPoints = 0;
+  let hotPickWins = 0;
+  let hotPickLosses = 0;
 
   const weekPoints = new Map<string, number>();
 
@@ -53,6 +55,12 @@ export async function GET() {
     totalPoints += pts;
     if (pts > 0) wins++;
     else losses++;
+
+    if (pick.isHotPick) {
+      if (pts > 0) hotPickWins++;
+      else hotPickLosses++;
+    }
+
     weekPoints.set(pick.game.weekId, (weekPoints.get(pick.game.weekId) || 0) + pts);
   }
 
@@ -72,6 +80,8 @@ export async function GET() {
       totalPoints,
       wins,
       losses,
+      hotPickWins,
+      hotPickLosses,
       rank: rank || totalPlayers + 1,
       totalPlayers: Math.max(totalPlayers, 1),
       weeklyScores,

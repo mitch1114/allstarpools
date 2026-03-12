@@ -9,8 +9,8 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const league = searchParams.get("league"); // null = combined, "NFL" or "NCAAF" for filtered
-  const weekFilter = searchParams.get("week"); // specific weekId or null for all
+  const league = searchParams.get("league");
+  const weekFilter = searchParams.get("week");
 
   const season = await prisma.season.findFirst({
     where: { isActive: true },
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     select: { id: true, name: true, playerCode: true },
   });
 
-  // Build filter for picks
+  // Build filter for scored picks
   const gameFilter: Record<string, unknown> = {
     seasonId: season.id,
     isFinal: true,
@@ -42,20 +42,52 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  // Calculate standings per user with weekly breakdown
+  // Get the week to calculate best/worst potential for
+  const potentialWeekId = weekFilter || season.weeks.find(w => w.isActive)?.id || null;
+
+  // Get ALL picks for that week (scored + unscored) to calculate potential
+  const potentialGameFilter: Record<string, unknown> = { seasonId: season.id };
+  if (league) potentialGameFilter.league = league;
+
+  let allPicksForWeek: { userId: string; isHotPick: boolean; points: number | null; game: { isFinal: boolean } }[] = [];
+  if (potentialWeekId) {
+    allPicksForWeek = await prisma.pick.findMany({
+      where: {
+        weekId: potentialWeekId,
+        game: potentialGameFilter,
+      },
+      select: {
+        userId: true,
+        isHotPick: true,
+        points: true,
+        game: { select: { isFinal: true } },
+      },
+    });
+  }
+
+  // Get weekly prize totals per user
+  const weeklyPrizes = await prisma.weeklyPrize.findMany({
+    where: { week: { seasonId: season.id } },
+    select: { userId: true, amount: true },
+  });
+
+  const userCashTotals = new Map<string, number>();
+  for (const prize of weeklyPrizes) {
+    userCashTotals.set(prize.userId, (userCashTotals.get(prize.userId) || 0) + prize.amount);
+  }
+
+  // Calculate standings per user
   const standings = users.map((user) => {
     const userPicks = picks.filter((p) => p.userId === user.id);
 
     let wins = 0;
     let losses = 0;
-    let ties = 0;
+    const ties = 0;
 
-    // Group by week for weekly scores
     const weekPoints = new Map<string, number>();
 
     for (const pick of userPicks) {
       const pts = pick.points ?? 0;
-
       if (pts > 0) wins++;
       else losses++;
 
@@ -70,41 +102,47 @@ export async function GET(req: NextRequest) {
       const pts = weekPoints.get(week.id) ?? 0;
       if (weekPoints.has(week.id)) {
         ytd += pts;
-        weeklyScores.push({
-          weekId: week.id,
-          weekNumber: week.number,
-          points: pts,
-          ytd,
-        });
+        weeklyScores.push({ weekId: week.id, weekNumber: week.number, points: pts, ytd });
+      }
+    }
+
+    // Calculate best/worst potential for the selected week
+    const userWeekPicks = allPicksForWeek.filter((p) => p.userId === user.id);
+    let bestPotential = 0;
+    let worstPotential = 0;
+
+    for (const pick of userWeekPicks) {
+      if (pick.game.isFinal && pick.points !== null) {
+        bestPotential += pick.points;
+        worstPotential += pick.points;
+      } else {
+        bestPotential += pick.isHotPick ? 2 : 1;
+        worstPotential += pick.isHotPick ? -1 : 0;
       }
     }
 
     const weekScores = Array.from(weekPoints.values());
-    const bestWeek = weekScores.length > 0 ? Math.max(...weekScores) : 0;
-    const worstWeek = weekScores.length > 0 ? Math.min(...weekScores) : 0;
     const totalPoints = weekScores.reduce((sum, s) => sum + s, 0);
     const totalGames = wins + losses + ties;
     const pct = totalGames > 0 ? wins / totalGames : 0;
+    const totalCash = userCashTotals.get(user.id) || 0;
 
     return {
       id: user.id,
       name: user.name,
       playerCode: user.playerCode,
-      wins,
-      losses,
-      ties,
-      pct,
+      wins, losses, ties, pct,
       totalPoints,
-      bestWeek,
-      worstWeek,
+      bestPotential,
+      worstPotential,
       gamesPlayed: totalGames,
       weeklyScores,
+      totalCash,
     };
   });
 
   standings.sort((a, b) => b.totalPoints - a.totalPoints || b.pct - a.pct);
 
-  // Filter out users with no picks
   const activeStandings = standings.filter((s) => s.gamesPlayed > 0);
 
   return NextResponse.json({

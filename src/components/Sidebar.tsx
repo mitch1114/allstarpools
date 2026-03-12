@@ -266,6 +266,7 @@ export default function Sidebar() {
               { href: "/admin/games", label: "Manage Games" },
               { href: "/admin/scores", label: "Enter Scores" },
               { href: "/admin/players", label: "Manage Players" },
+              { href: "/admin/prizes", label: "Weekly Prizes" },
             ].map((item) => {
               const isActive = pathname === item.href;
               return (
