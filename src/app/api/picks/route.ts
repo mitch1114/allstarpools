@@ -38,13 +38,20 @@ export async function POST(req: NextRequest) {
 
   const now = new Date();
   const errors: string[] = [];
-  const savedPicks = [];
+
+  // Fetch all games in one query instead of one per pick
+  const gameIds = picks.map((p: { gameId: string }) => p.gameId);
+  const games = await prisma.game.findMany({
+    where: { id: { in: gameIds } },
+  });
+  const gameMap = new Map(games.map((g) => [g.id, g]));
+
+  const validPicks: { gameId: string; weekId: string; selection: string; isHotPick: boolean }[] = [];
 
   for (const pick of picks) {
     const { gameId, selection, isHotPick } = pick;
 
-    // Check game hasn't started
-    const game = await prisma.game.findUnique({ where: { id: gameId } });
+    const game = gameMap.get(gameId);
     if (!game) {
       errors.push(`Game ${gameId} not found`);
       continue;
@@ -62,32 +69,42 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    const saved = await prisma.pick.upsert({
-      where: {
-        userId_gameId: {
-          userId: session.user.id,
-          gameId,
-        },
-      },
-      update: {
-        selection,
-        isHotPick: !!isHotPick,
-      },
-      create: {
-        userId: session.user.id,
-        weekId: game.weekId,
-        gameId,
-        selection,
-        isHotPick: !!isHotPick,
-      },
+    validPicks.push({
+      gameId,
+      weekId: game.weekId,
+      selection,
+      isHotPick: !!isHotPick,
     });
-
-    savedPicks.push(saved);
   }
+
+  // Save all picks in a single transaction (one round trip)
+  const saved = await prisma.$transaction(
+    validPicks.map((p) =>
+      prisma.pick.upsert({
+        where: {
+          userId_gameId: {
+            userId: session.user.id,
+            gameId: p.gameId,
+          },
+        },
+        update: {
+          selection: p.selection,
+          isHotPick: p.isHotPick,
+        },
+        create: {
+          userId: session.user.id,
+          weekId: p.weekId,
+          gameId: p.gameId,
+          selection: p.selection,
+          isHotPick: p.isHotPick,
+        },
+      })
+    )
+  );
 
   return NextResponse.json({
     success: true,
-    saved: savedPicks.length,
+    saved: saved.length,
     errors,
   });
 }

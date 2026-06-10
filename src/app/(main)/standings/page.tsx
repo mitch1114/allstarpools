@@ -176,6 +176,7 @@ export default function StandingsPage() {
           alignItems: "center",
           gap: "8px",
           fontSize: "12px",
+          flexWrap: "wrap",
         }}
       >
         <label style={{ fontWeight: "bold", color: "#333" }}>Week:</label>

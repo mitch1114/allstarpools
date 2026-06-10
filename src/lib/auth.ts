@@ -4,6 +4,11 @@ import { compareSync } from "bcryptjs";
 import { prisma } from "./db";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret:
+    process.env.AUTH_SECRET ??
+    process.env.NEXTAUTH_SECRET ??
+    "allstarpools-fallback-secret-set-AUTH_SECRET-in-env",
+  trustHost: true,
   providers: [
     Credentials({
       name: "Player Code",
@@ -14,12 +19,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.playerCode || !credentials?.password) return null;
 
-        // Case-insensitive player code lookup
-        const inputCode = (credentials.playerCode as string).toLowerCase();
-        const allUsers = await prisma.user.findMany({
-          where: { playerCode: { not: "" } },
+        // Case-insensitive player code lookup (PostgreSQL)
+        const inputCode = (credentials.playerCode as string).trim();
+        const user = await prisma.user.findFirst({
+          where: { playerCode: { equals: inputCode, mode: "insensitive" } },
         });
-        const user = allUsers.find(u => u.playerCode.toLowerCase() === inputCode) ?? null;
 
         if (!user) return null;
 

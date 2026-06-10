@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import Sidebar from "@/components/Sidebar";
 import SessionProvider from "@/components/SessionProvider";
+import MainShell from "@/components/MainShell";
 
 export default async function MainLayout({
   children,
@@ -16,25 +16,7 @@ export default async function MainLayout({
 
   return (
     <SessionProvider>
-      <div
-        style={{
-          display: "flex",
-          minHeight: "100vh",
-          fontFamily: "Verdana, Geneva, sans-serif",
-        }}
-      >
-        <Sidebar />
-        <main
-          style={{
-            flex: 1,
-            background: "#f5f5f0",
-            padding: "20px",
-            minHeight: "100vh",
-          }}
-        >
-          {children}
-        </main>
-      </div>
+      <MainShell>{children}</MainShell>
     </SessionProvider>
   );
 }

@@ -130,6 +130,7 @@ export default function MyPicksPage() {
           >
             Regular Picks ({regularPicks.length})
           </div>
+          <div className="table-scroll">
           <table style={tableStyle}>
             <thead>
               <tr style={{ background: "#f5f5f0" }}>
@@ -185,6 +186,7 @@ export default function MyPicksPage() {
               })}
             </tbody>
           </table>
+          </div>
 
           {/* Hot Picks */}
           <div
@@ -201,6 +203,7 @@ export default function MyPicksPage() {
           >
             🔥 Hot Picks ({hotPicks.length})
           </div>
+          <div className="table-scroll">
           <table style={tableStyle}>
             <thead>
               <tr style={{ background: "#fff8e0" }}>
@@ -268,6 +271,7 @@ export default function MyPicksPage() {
               })}
             </tbody>
           </table>
+          </div>
 
           {/* Tiebreaker and Summary */}
           <div
@@ -304,6 +308,7 @@ export default function MyPicksPage() {
 
 const tableStyle: React.CSSProperties = {
   width: "100%",
+  minWidth: "480px",
   borderCollapse: "collapse",
   background: "#fff",
   borderLeft: "1px solid #ccc",

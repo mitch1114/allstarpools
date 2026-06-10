@@ -216,6 +216,8 @@ export default function PickSheetPage() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: "wrap",
+          gap: "6px",
         }}
       >
         <h2 style={{ margin: 0, fontSize: "18px" }}>
@@ -246,21 +248,8 @@ export default function PickSheetPage() {
         You can submit any number of picks at a time.
       </div>
 
-      {/* Column Headers */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          padding: "6px 12px",
-          gap: "8px",
-          background: "#e8e8e0",
-          border: "1px solid #ccc",
-          borderTop: "none",
-          fontSize: "10px",
-          fontWeight: "bold",
-          color: "#666",
-        }}
-      >
+      {/* Column Headers (desktop only) */}
+      <div className="pick-row-header">
         <div style={{ width: "90px", flexShrink: 0 }}>Time</div>
         <div style={{ flex: 1, textAlign: "center" }}>Away</div>
         <div style={{ width: "16px", flexShrink: 0 }}></div>
@@ -280,12 +269,8 @@ export default function PickSheetPage() {
           return (
             <div
               key={game.id}
+              className="pick-row"
               style={{
-                display: "flex",
-                alignItems: "center",
-                padding: "8px 12px",
-                gap: "8px",
-                borderBottom: "1px solid #eee",
                 background: locked
                   ? "#f5f5f2"
                   : isHot
@@ -297,24 +282,14 @@ export default function PickSheetPage() {
               }}
             >
               {/* Game time */}
-              <div
-                style={{
-                  width: "90px",
-                  flexShrink: 0,
-                  fontSize: "10px",
-                  color: "#888",
-                  lineHeight: "1.3",
-                }}
-              >
-                {formatGameTime(game.gameTime)}
+              <div className="pick-time">
+                <span>{formatGameTime(game.gameTime)}</span>
                 {locked && (
                   <span
                     style={{
-                      display: "block",
                       fontSize: "9px",
                       color: "#cc0000",
                       fontWeight: "bold",
-                      marginTop: "2px",
                     }}
                   >
                     LOCKED
@@ -400,6 +375,7 @@ export default function PickSheetPage() {
 
               {/* Hot Pick button */}
               <button
+                className="hp-btn"
                 onClick={() => !locked && pick?.selection && handleHotPick(game.id)}
                 disabled={locked || !pick?.selection}
                 title={isHot ? "Remove Hot Pick" : "Mark as Hot Pick (2x points)"}
@@ -426,24 +402,16 @@ export default function PickSheetPage() {
         })}
       </div>
 
-      {/* Submit */}
-      <div
-        style={{
-          background: "#fff",
-          border: "1px solid #ccc",
-          borderTop: "none",
-          padding: "12px 16px",
-          borderRadius: "0 0 4px 4px",
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-        }}
-      >
+      {/* Submit (sticky so it stays visible while scrolling) */}
+      <div className="pick-submit-bar">
+        <span style={{ fontSize: "11px", color: "#888", marginRight: "auto" }}>
+          {selectedCount} pick{selectedCount !== 1 ? "s" : ""} selected
+        </span>
         <button
           onClick={() => submitPicks()}
           disabled={saving}
           style={{
-            padding: "10px 30px",
+            padding: "12px 30px",
             background: "#006600",
             color: "#fff",
             border: "none",

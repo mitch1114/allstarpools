@@ -158,9 +158,11 @@ export default function AdminScoresPage() {
         </div>
       )}
 
+      <div className="table-scroll">
       <table
         style={{
           width: "100%",
+          minWidth: "640px",
           borderCollapse: "collapse",
           background: "#fff",
           border: "1px solid #ccc",
@@ -319,6 +321,7 @@ export default function AdminScoresPage() {
           )}
         </tbody>
       </table>
+      </div>
 
       <div
         style={{

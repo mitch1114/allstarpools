@@ -206,20 +206,7 @@ export default function AdminGamesPage() {
 
       {/* Add Game Form */}
       {showForm && (
-        <form
-          onSubmit={handleAddGame}
-          style={{
-            background: "#fffff0",
-            border: "1px solid #ccc",
-            borderTop: "none",
-            padding: "16px",
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 100px 200px auto",
-            gap: "8px",
-            alignItems: "end",
-            fontSize: "12px",
-          }}
-        >
+        <form onSubmit={handleAddGame} className="admin-game-form">
           <div>
             <label style={adminLabelStyle}>Away Team</label>
             <input
@@ -279,9 +266,11 @@ export default function AdminGamesPage() {
       )}
 
       {/* Games Table */}
+      <div className="table-scroll">
       <table
         style={{
           width: "100%",
+          minWidth: "640px",
           borderCollapse: "collapse",
           background: "#fff",
           border: "1px solid #ccc",
@@ -401,6 +390,7 @@ export default function AdminGamesPage() {
           )}
         </tbody>
       </table>
+      </div>
 
       <div
         style={{

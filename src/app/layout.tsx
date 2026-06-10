@@ -2,8 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "All Star Pools - NFL & NCAAF Spread Pool",
-  description: "All Star Pools - Your home for NFL and NCAAF spread pool action",
+  title: "All Star Pools - NCAAF & NFL Spread Pool",
+  description: "All Star Pools - Your home for NCAAF and NFL spread pool action",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

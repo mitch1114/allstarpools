@@ -62,15 +62,17 @@ export default function PlayerPicksPage() {
         setLoading(false);
       });
 
-    // Get player name
-    fetch(`/api/admin/players`)
+  }, [selectedWeek, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/players/${userId}`)
       .then((r) => r.json())
       .then((data) => {
-        const player = (data.players || []).find((p: { id: string }) => p.id === userId);
-        if (player) setPlayerName(player.name);
+        if (data.player) setPlayerName(data.player.name);
       })
       .catch(() => {});
-  }, [selectedWeek, userId]);
+  }, [userId]);
 
   const nflPicks = picks.filter((p) => p.game.league === "NFL");
   const ncaafPicks = picks.filter((p) => p.game.league === "NCAAF");
@@ -95,7 +97,8 @@ export default function PlayerPicksPage() {
         <div style={{ fontSize: "13px", fontWeight: "bold", color: "#003366", padding: "8px 0 4px" }}>
           {league} ({leaguePicks.length} picks, {totalPoints} pts)
         </div>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+        <div className="table-scroll">
+        <table style={{ width: "100%", minWidth: "520px", borderCollapse: "collapse", fontSize: "12px" }}>
           <thead>
             <tr style={{ background: "#e8e8e0" }}>
               <th style={thStyle}>Matchup</th>
@@ -141,6 +144,7 @@ export default function PlayerPicksPage() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     );
   }

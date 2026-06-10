@@ -11,7 +11,12 @@ interface WeekOption {
   label: string;
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -74,14 +79,10 @@ export default function Sidebar() {
 
   return (
     <div
+      className={`app-sidebar${open ? " open" : ""}`}
       style={{
-        width: "200px",
-        minHeight: "100vh",
-        background: "#003366",
-        color: "#fff",
         fontFamily: "Verdana, Geneva, sans-serif",
         fontSize: "12px",
-        flexShrink: 0,
       }}
     >
       {/* Logo */}
@@ -90,8 +91,27 @@ export default function Sidebar() {
           padding: "16px 12px",
           textAlign: "center",
           borderBottom: "1px solid #004488",
+          position: "relative",
         }}
       >
+        <button
+          className="sidebar-close"
+          onClick={onClose}
+          aria-label="Close menu"
+          style={{
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            background: "transparent",
+            border: "none",
+            color: "#88bbee",
+            fontSize: "20px",
+            cursor: "pointer",
+            padding: "4px 8px",
+          }}
+        >
+          ✕
+        </button>
         <div style={{ fontSize: "16px", fontWeight: "bold" }}>
           ★ ALL STAR ★
         </div>
@@ -137,7 +157,7 @@ export default function Sidebar() {
               onClick={() => handleLeagueChange(league)}
               style={{
                 flex: 1,
-                padding: "6px 4px",
+                padding: "8px 4px",
                 background:
                   selectedLeague === league ? "#fff" : "transparent",
                 color: selectedLeague === league ? "#003366" : "#88bbee",
@@ -177,10 +197,10 @@ export default function Sidebar() {
           onChange={(e) => handleWeekChange(e.target.value)}
           style={{
             width: "100%",
-            padding: "6px",
+            padding: "8px 6px",
             border: "1px solid #88bbee",
             borderRadius: "2px",
-            fontSize: "12px",
+            fontSize: "13px",
             background: "#fff",
             color: "#333",
           }}
@@ -202,13 +222,14 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={`${item.href}?league=${selectedLeague}${selectedWeek ? `&week=${selectedWeek}` : ""}`}
+              onClick={onClose}
               style={{
                 display: "block",
-                padding: "8px 16px",
+                padding: "10px 16px",
                 color: isActive ? "#fff" : "#aaccee",
                 background: isActive ? "#004488" : "transparent",
                 textDecoration: "none",
-                fontSize: "12px",
+                fontSize: "13px",
                 fontWeight: isActive ? "bold" : "normal",
                 borderLeft: isActive ? "3px solid #ffcc00" : "3px solid transparent",
               }}
@@ -249,7 +270,7 @@ export default function Sidebar() {
                   display: "block",
                   width: "calc(100% - 32px)",
                   margin: "4px 16px",
-                  padding: "6px 8px",
+                  padding: "8px",
                   background: "transparent",
                   color: "#ddaa44",
                   border: "1px solid #ddaa44",
@@ -273,13 +294,14 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={`${item.href}?league=${selectedLeague}${selectedWeek ? `&week=${selectedWeek}` : ""}`}
+                  onClick={onClose}
                   style={{
                     display: "block",
-                    padding: "8px 16px",
+                    padding: "10px 16px",
                     color: isActive ? "#ffcc00" : "#ddaa44",
                     background: isActive ? "#004488" : "transparent",
                     textDecoration: "none",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     fontWeight: isActive ? "bold" : "normal",
                     borderLeft: isActive
                       ? "3px solid #ffcc00"
@@ -300,7 +322,7 @@ export default function Sidebar() {
           onClick={() => signOut({ callbackUrl: "/login" })}
           style={{
             width: "100%",
-            padding: "8px",
+            padding: "10px",
             background: "transparent",
             color: "#88bbee",
             border: "1px solid #88bbee",
